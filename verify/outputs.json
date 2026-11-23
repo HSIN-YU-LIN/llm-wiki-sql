@@ -1,0 +1,554 @@
+[
+ {
+  "n": 1,
+  "slide": 3,
+  "label": "看一張表的全部內容",
+  "status": "PASS",
+  "got": [
+   [
+    1,
+    "陳怡君",
+    1,
+    62000
+   ],
+   [
+    2,
+    "林志明",
+    1,
+    58000
+   ],
+   [
+    3,
+    "王美玲",
+    2,
+    51000
+   ],
+   [
+    4,
+    "張家豪",
+    null,
+    47000
+   ]
+  ],
+  "note": "",
+  "expect": [
+   [
+    1,
+    "陳怡君",
+    1,
+    62000
+   ],
+   [
+    2,
+    "林志明",
+    1,
+    58000
+   ],
+   [
+    3,
+    "王美玲",
+    2,
+    51000
+   ],
+   [
+    4,
+    "張家豪",
+    null,
+    47000
+   ]
+  ]
+ },
+ {
+  "n": 2,
+  "slide": 4,
+  "label": "SELECT 挑欄位、WHERE 挑列",
+  "status": "PASS",
+  "got": [
+   [
+    "陳怡君",
+    62000
+   ],
+   [
+    "林志明",
+    58000
+   ]
+  ],
+  "note": "",
+  "expect": [
+   [
+    "陳怡君",
+    62000
+   ],
+   [
+    "林志明",
+    58000
+   ]
+  ]
+ },
+ {
+  "n": 3,
+  "slide": 5,
+  "label": "INNER JOIN：未配對的列被丟棄",
+  "status": "PASS",
+  "got": [
+   [
+    "陳怡君",
+    "工程"
+   ],
+   [
+    "林志明",
+    "工程"
+   ],
+   [
+    "王美玲",
+    "行銷"
+   ]
+  ],
+  "note": "",
+  "expect": [
+   [
+    "陳怡君",
+    "工程"
+   ],
+   [
+    "林志明",
+    "工程"
+   ],
+   [
+    "王美玲",
+    "行銷"
+   ]
+  ]
+ },
+ {
+  "n": 4,
+  "slide": 5,
+  "label": "LEFT JOIN：左表每列至少出現一次",
+  "status": "PASS",
+  "got": [
+   [
+    "陳怡君",
+    "工程"
+   ],
+   [
+    "林志明",
+    "工程"
+   ],
+   [
+    "王美玲",
+    "行銷"
+   ],
+   [
+    "張家豪",
+    null
+   ]
+  ],
+  "note": "",
+  "expect": [
+   [
+    "陳怡君",
+    "工程"
+   ],
+   [
+    "林志明",
+    "工程"
+   ],
+   [
+    "王美玲",
+    "行銷"
+   ],
+   [
+    "張家豪",
+    null
+   ]
+  ]
+ },
+ {
+  "n": 5,
+  "slide": 6,
+  "label": "條件放 ON：外連接保留未配對列",
+  "status": "PASS",
+  "got": [
+   [
+    "陳怡君",
+    "工程"
+   ],
+   [
+    "林志明",
+    "工程"
+   ],
+   [
+    "王美玲",
+    null
+   ],
+   [
+    "張家豪",
+    null
+   ]
+  ],
+  "note": "",
+  "expect": [
+   [
+    "陳怡君",
+    "工程"
+   ],
+   [
+    "林志明",
+    "工程"
+   ],
+   [
+    "王美玲",
+    null
+   ],
+   [
+    "張家豪",
+    null
+   ]
+  ]
+ },
+ {
+  "n": 6,
+  "slide": 6,
+  "label": "條件放 WHERE：外連接退化成內連接",
+  "status": "PASS",
+  "got": [
+   [
+    "陳怡君",
+    "工程"
+   ],
+   [
+    "林志明",
+    "工程"
+   ]
+  ],
+  "note": "",
+  "expect": [
+   [
+    "陳怡君",
+    "工程"
+   ],
+   [
+    "林志明",
+    "工程"
+   ]
+  ]
+ },
+ {
+  "n": 7,
+  "slide": 7,
+  "label": "別名可以用在 ORDER BY",
+  "status": "PASS",
+  "got": [
+   [
+    "陳怡君",
+    744000
+   ],
+   [
+    "林志明",
+    696000
+   ],
+   [
+    "王美玲",
+    612000
+   ],
+   [
+    "張家豪",
+    564000
+   ]
+  ],
+  "note": "",
+  "expect": [
+   [
+    "陳怡君",
+    744000
+   ],
+   [
+    "林志明",
+    696000
+   ],
+   [
+    "王美玲",
+    612000
+   ],
+   [
+    "張家豪",
+    564000
+   ]
+  ]
+ },
+ {
+  "n": 8,
+  "slide": 7,
+  "label": "別名用在 WHERE：SQLite 接受（非 SQL 標準）",
+  "status": "PASS",
+  "got": [
+   [
+    "陳怡君",
+    744000
+   ],
+   [
+    "林志明",
+    696000
+   ],
+   [
+    "王美玲",
+    612000
+   ]
+  ],
+  "note": "",
+  "expect": [
+   [
+    "陳怡君",
+    744000
+   ],
+   [
+    "林志明",
+    696000
+   ],
+   [
+    "王美玲",
+    612000
+   ]
+  ]
+ },
+ {
+  "n": 9,
+  "slide": 7,
+  "label": "HAVING 過濾組，WHERE 過濾列",
+  "status": "PASS",
+  "got": [
+   [
+    1,
+    2
+   ]
+  ],
+  "note": "",
+  "expect": [
+   [
+    1,
+    2
+   ]
+  ]
+ },
+ {
+  "n": 10,
+  "slide": 8,
+  "label": "= NULL 永遠配不到任何列",
+  "status": "PASS",
+  "got": [],
+  "note": "",
+  "expect": []
+ },
+ {
+  "n": 11,
+  "slide": 8,
+  "label": "IS NULL 才是正確寫法",
+  "status": "PASS",
+  "got": [
+   [
+    "張家豪"
+   ]
+  ],
+  "note": "",
+  "expect": [
+   [
+    "張家豪"
+   ]
+  ]
+ },
+ {
+  "n": 12,
+  "slide": 8,
+  "label": "COUNT(*) 與 COUNT(col) 對 NULL 的差異",
+  "status": "PASS",
+  "got": [
+   [
+    4,
+    3
+   ]
+  ],
+  "note": "",
+  "expect": [
+   [
+    4,
+    3
+   ]
+  ]
+ },
+ {
+  "n": 13,
+  "slide": 11,
+  "label": "建索引後以索引查找",
+  "status": "PASS",
+  "got": [
+   [
+    3,
+    0,
+    0,
+    "SEARCH employee USING INDEX idx_emp_dept (dept_id=?)"
+   ]
+  ],
+  "note": "",
+  "expect": "idx_emp_dept"
+ },
+ {
+  "n": 14,
+  "slide": 12,
+  "label": "SQLite：BINARY collation 下 LIKE 前綴【不】走索引",
+  "status": "PASS",
+  "got": [
+   [
+    2,
+    0,
+    0,
+    "SCAN employee"
+   ]
+  ],
+  "note": "",
+  "expect": "SCAN employee"
+ },
+ {
+  "n": 15,
+  "slide": 12,
+  "label": "SQLite：手寫等價範圍條件則走索引（證明不是索引不能用）",
+  "status": "PASS",
+  "got": [
+   [
+    3,
+    0,
+    0,
+    "SEARCH employee USING INDEX idx_emp_name (name>? AND name<?)"
+   ]
+  ],
+  "note": "",
+  "expect": "idx_emp_name"
+ },
+ {
+  "n": 16,
+  "slide": 12,
+  "label": "SQLite：欄位改用 NOCASE collation 後 LIKE 前綴走索引",
+  "status": "PASS",
+  "got": [
+   [
+    3,
+    0,
+    0,
+    "SEARCH emp_nocase USING INDEX idx_nocase_name (name>? AND name<?)"
+   ]
+  ],
+  "note": "",
+  "expect": "idx_nocase_name"
+ },
+ {
+  "n": 17,
+  "slide": 12,
+  "label": "後綴通配 LIKE '%x' 無法用索引",
+  "status": "PASS",
+  "got": [
+   [
+    2,
+    0,
+    0,
+    "SCAN employee"
+   ]
+  ],
+  "note": "",
+  "expect": "SCAN employee"
+ },
+ {
+  "n": 18,
+  "slide": 12,
+  "label": "函數包住欄位使索引失效",
+  "status": "PASS",
+  "got": [
+   [
+    2,
+    0,
+    0,
+    "SCAN employee"
+   ]
+  ],
+  "note": "",
+  "expect": "SCAN employee"
+ },
+ {
+  "n": 19,
+  "slide": 13,
+  "label": "複合索引：約束前導欄位可用",
+  "status": "PASS",
+  "got": [
+   [
+    3,
+    0,
+    0,
+    "SEARCH employee USING INDEX idx_emp_dept_salary (dept_id=? AND salary>?)"
+   ]
+  ],
+  "note": "",
+  "expect": "idx_emp_dept_salary"
+ },
+ {
+  "n": 20,
+  "slide": 13,
+  "label": "複合索引：只約束非前導欄位用不到",
+  "status": "PASS",
+  "got": [
+   [
+    2,
+    0,
+    0,
+    "SCAN employee"
+   ]
+  ],
+  "note": "",
+  "expect": "SCAN employee"
+ },
+ {
+  "n": 21,
+  "slide": 13,
+  "label": "覆蓋索引：查詢只要索引內的欄位，不必回表",
+  "status": "PASS",
+  "got": [
+   [
+    2,
+    0,
+    0,
+    "SEARCH employee USING COVERING INDEX idx_emp_dept_salary (dept_id=?)"
+   ]
+  ],
+  "note": "",
+  "expect": "COVERING INDEX"
+ },
+ {
+  "n": 22,
+  "slide": 13,
+  "label": "非覆蓋：多要一個索引外的欄位就得回表",
+  "status": "PASS",
+  "got": [
+   [
+    3,
+    0,
+    0,
+    "SEARCH employee USING INDEX idx_emp_dept (dept_id=?)"
+   ]
+  ],
+  "note": "",
+  "expect": "USING INDEX idx_emp_dept"
+ },
+ {
+  "n": 23,
+  "slide": 16,
+  "label": "沒有索引時的計畫：全表掃描",
+  "status": "PASS",
+  "got": [
+   [
+    2,
+    0,
+    0,
+    "SCAN employee"
+   ]
+  ],
+  "note": "",
+  "expect": "SCAN employee"
+ }
+]
