@@ -62,7 +62,7 @@ srows = "".join(
 
 built = datetime.datetime.now().strftime("%Y-%m-%d")
 doc = f"""<!DOCTYPE html>
-<html lang="zh-Hant"><head><meta charset="utf-8">
+<html lang="zh-Hant" dir="ltr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SQL 查詢執行與效能 — LLM Wiki</title>
 <style>
@@ -70,8 +70,8 @@ doc = f"""<!DOCTYPE html>
 --teal:#0f6e56;--teal-bg:#e4f2ec;--amber:#8a5a0b;--amber-bg:#fbf0dc;--code:#f2efe8;}}
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{background:var(--paper);color:var(--ink);font:16px/1.75 system-ui,"Noto Sans TC",sans-serif;
-display:grid;grid-template-columns:290px 1fr;min-height:100vh}}
-nav{{border-right:1px solid var(--line);padding:26px 18px;position:sticky;top:0;height:100vh;overflow:auto}}
+display:grid;grid-template-columns:290px 1fr;grid-template-areas:"nav main";min-height:100vh}}
+nav{{grid-area:nav;grid-column:1;grid-row:1;border-right:1px solid var(--line);padding:26px 18px;position:sticky;top:0;height:100vh;overflow:auto}}
 nav h1{{font-size:17px;line-height:1.4;margin-bottom:4px}}
 nav .sub{{font-size:12.5px;color:var(--ink3);margin-bottom:20px}}
 .navgrp{{margin-bottom:16px}}
@@ -80,7 +80,7 @@ nav a{{display:block;padding:4px 8px;border-radius:5px;color:var(--ink2);text-de
 nav a b{{color:var(--teal);font-weight:600;margin-right:5px}}
 nav a:hover{{background:var(--teal-bg)}}
 nav a.on{{background:var(--teal-bg);color:var(--ink)}}
-main{{padding:44px 54px;max-width:900px}}
+main{{grid-area:main;grid-column:2;grid-row:1;padding:44px 54px;max-width:900px;min-width:0}}
 .intro{{border:1px solid var(--line);background:#fff;border-radius:10px;padding:20px 24px;margin-bottom:40px}}
 .intro h2{{font-size:19px;margin-bottom:10px;border:0;padding:0}}
 .intro p{{font-size:14.5px;color:var(--ink2);margin-bottom:8px}}
@@ -105,7 +105,7 @@ a.cite{{display:inline-block;font-size:11px;background:var(--teal-bg);color:var(
 padding:0 5px;border-radius:3px;text-decoration:none;vertical-align:1px;font-weight:600}}
 a.cite:hover{{background:var(--teal);color:#fff}}
 #src td:first-child{{color:var(--teal);font-weight:600;white-space:nowrap}}
-@media(max-width:860px){{body{{grid-template-columns:1fr}}nav{{position:static;height:auto}}main{{padding:28px 20px}}}}
+@media(max-width:860px){{body{{grid-template-columns:1fr;grid-template-areas:"nav" "main"}}nav{{grid-column:1;grid-row:1;position:static;height:auto;max-height:40vh;overflow-y:auto;border-right:0;border-bottom:1px solid var(--line);padding:20px 18px}}main{{grid-column:1;grid-row:2;padding:28px 20px;max-width:none}}nav h1{{font-size:16px}}.navgrp{{margin-bottom:12px}}}}
 </style></head><body>
 <nav><h1>SQL 查詢執行與效能</h1><div class="sub">LLM Wiki · 19 條條目 · 17 篇來源<br>建立於 {built}</div>
 {''.join(nav)}

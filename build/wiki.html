@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant"><head><meta charset="utf-8">
+<html lang="zh-Hant" dir="ltr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SQL 查詢執行與效能 — LLM Wiki</title>
 <style>
@@ -7,8 +7,8 @@
 --teal:#0f6e56;--teal-bg:#e4f2ec;--amber:#8a5a0b;--amber-bg:#fbf0dc;--code:#f2efe8;}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--paper);color:var(--ink);font:16px/1.75 system-ui,"Noto Sans TC",sans-serif;
-display:grid;grid-template-columns:290px 1fr;min-height:100vh}
-nav{border-right:1px solid var(--line);padding:26px 18px;position:sticky;top:0;height:100vh;overflow:auto}
+display:grid;grid-template-columns:290px 1fr;grid-template-areas:"nav main";min-height:100vh}
+nav{grid-area:nav;grid-column:1;grid-row:1;border-right:1px solid var(--line);padding:26px 18px;position:sticky;top:0;height:100vh;overflow:auto}
 nav h1{font-size:17px;line-height:1.4;margin-bottom:4px}
 nav .sub{font-size:12.5px;color:var(--ink3);margin-bottom:20px}
 .navgrp{margin-bottom:16px}
@@ -17,7 +17,7 @@ nav a{display:block;padding:4px 8px;border-radius:5px;color:var(--ink2);text-dec
 nav a b{color:var(--teal);font-weight:600;margin-right:5px}
 nav a:hover{background:var(--teal-bg)}
 nav a.on{background:var(--teal-bg);color:var(--ink)}
-main{padding:44px 54px;max-width:900px}
+main{grid-area:main;grid-column:2;grid-row:1;padding:44px 54px;max-width:900px;min-width:0}
 .intro{border:1px solid var(--line);background:#fff;border-radius:10px;padding:20px 24px;margin-bottom:40px}
 .intro h2{font-size:19px;margin-bottom:10px;border:0;padding:0}
 .intro p{font-size:14.5px;color:var(--ink2);margin-bottom:8px}
@@ -42,7 +42,7 @@ a.cite{display:inline-block;font-size:11px;background:var(--teal-bg);color:var(-
 padding:0 5px;border-radius:3px;text-decoration:none;vertical-align:1px;font-weight:600}
 a.cite:hover{background:var(--teal);color:#fff}
 #src td:first-child{color:var(--teal);font-weight:600;white-space:nowrap}
-@media(max-width:860px){body{grid-template-columns:1fr}nav{position:static;height:auto}main{padding:28px 20px}}
+@media(max-width:860px){body{grid-template-columns:1fr;grid-template-areas:"nav" "main"}nav{grid-column:1;grid-row:1;position:static;height:auto;max-height:40vh;overflow-y:auto;border-right:0;border-bottom:1px solid var(--line);padding:20px 18px}main{grid-column:1;grid-row:2;padding:28px 20px;max-width:none}nav h1{font-size:16px}.navgrp{margin-bottom:12px}}
 </style></head><body>
 <nav><h1>SQL 查詢執行與效能</h1><div class="sub">LLM Wiki · 19 條條目 · 17 篇來源<br>建立於 2026-11-23</div>
 <div class="navgrp"><div class="navcat">A · 關聯式模型與 SQL 語意</div><a href="#A1" data-code="A1"><b>A1</b> 關聯式模型：表、列、欄、鍵</a><a href="#A2" data-code="A2"><b>A2</b> 宣告式語言與查詢最佳化</a><a href="#A3" data-code="A3"><b>A3</b> 查詢的邏輯執行順序</a><a href="#A4" data-code="A4"><b>A4</b> JOIN 的種類與語意</a><a href="#A5" data-code="A5"><b>A5</b> NULL 與三值邏輯</a><a href="#A6" data-code="A6"><b>A6</b> 聚合與分組</a></div><div class="navgrp"><div class="navcat">B · 儲存與索引</div><a href="#B1" data-code="B1"><b>B1</b> 表的實體儲存與掃描成本</a><a href="#B2" data-code="B2"><b>B2</b> B-tree 索引原理</a><a href="#B3" data-code="B3"><b>B3</b> 複合索引與最左前綴</a><a href="#B4" data-code="B4"><b>B4</b> 索引失效的典型情境</a><a href="#B5" data-code="B5"><b>B5</b> 覆蓋索引與 index-only scan</a><a href="#B6" data-code="B6"><b>B6</b> 索引的代價</a></div><div class="navgrp"><div class="navcat">C · 查詢執行與最佳化器</div><a href="#C1" data-code="C1"><b>C1</b> 執行計畫與最佳化器</a><a href="#C2" data-code="C2"><b>C2</b> JOIN 演算法</a><a href="#C3" data-code="C3"><b>C3</b> 統計資訊與基數估計</a><a href="#C4" data-code="C4"><b>C4</b> 怎麼讀執行計畫</a><a href="#C5" data-code="C5"><b>C5</b> 常見反模式</a></div><div class="navgrp"><div class="navcat">D · 引擎實作差異</div><a href="#D1" data-code="D1"><b>D1</b> 三引擎的索引行為差異</a><a href="#D2" data-code="D2"><b>D2</b> 三引擎執行計畫輸出格式對照</a></div>
