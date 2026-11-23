@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL 查詢執行與效能 — LLM Wiki 與教學簡報</title>
+<style>
+:root{--paper:#faf8f4;--ink:#1f1d1a;--ink2:#55514a;--ink3:#8a847a;
+--line:#e2ddd3;--teal:#0f6e56;--teal-bg:#e4f2ec;--code:#f2efe8;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);
+font:16px/1.75 system-ui,"Noto Sans TC",sans-serif;
+display:flex;justify-content:center;padding:56px 24px 72px}
+.wrap{max-width:760px;width:100%}
+.eyebrow{font-size:12.5px;letter-spacing:.1em;color:var(--ink3);margin-bottom:10px}
+h1{font-size:30px;line-height:1.35;margin-bottom:12px;font-weight:600}
+.lede{font-size:16px;color:var(--ink2);margin-bottom:38px}
+.cards{display:grid;gap:16px;grid-template-columns:1fr 1fr;margin-bottom:40px}
+.card{display:block;text-decoration:none;color:inherit;background:#fff;
+border:1px solid var(--line);border-radius:11px;padding:22px 24px;transition:.15s}
+.card:hover{border-color:var(--teal);transform:translateY(-2px)}
+.card .k{font-size:11.5px;letter-spacing:.09em;color:var(--teal);margin-bottom:7px}
+.card h2{font-size:18px;margin-bottom:7px;font-weight:600}
+.card p{font-size:13.5px;color:var(--ink2);line-height:1.65}
+.meta{border-top:1px solid var(--line);padding-top:26px}
+.meta h3{font-size:14px;margin-bottom:12px;color:var(--ink)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin-bottom:26px}
+td{border-bottom:1px solid var(--line);padding:7px 0;color:var(--ink2)}
+td:first-child{width:170px;color:var(--ink)}
+.links{font-size:13.5px;color:var(--ink2)}
+.links a{color:var(--teal)}
+code{background:var(--code);padding:1px 5px;border-radius:3px;
+font:12.5px ui-monospace,monospace}
+@media(max-width:620px){.cards{grid-template-columns:1fr}h1{font-size:25px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">生成式 AI 課程作業 · LLM Wiki</div>
+  <h1>SQL 查詢的執行與效能</h1>
+  <p class="lede">
+    一份以官方文件為唯一來源建立的主題式 Wiki，以及由它產出的教學簡報。
+    主題聚焦在「一個查詢從被寫下到被執行之間發生了什麼」——
+    關聯式語意、索引結構、查詢最佳化器，以及三家資料庫引擎的實作差異。
+  </p>
+
+  <div class="cards">
+    <a class="card" href="build/index.html">
+      <div class="k">教學簡報 · 18 頁</div>
+      <h2>你的查詢為什麼慢？</h2>
+      <p>從一次 SELECT 看懂 SQL 怎麼被執行。寫給完全沒碰過資料庫的人，
+         11 頁含實際執行並比對過輸出的 SQL 範例。</p>
+    </a>
+    <a class="card" href="build/wiki.html">
+      <div class="k">LLM Wiki · 19 條條目</div>
+      <h2>知識庫</h2>
+      <p>A～D 四類共 19 條條目，17 篇一手來源，212 處逐句引註，
+         每個來源標記都可點擊開啟原始文件。</p>
+    </a>
+  </div>
+
+  <div class="meta">
+    <h3>專案資訊</h3>
+    <table>
+      <tr><td>知識來源</td><td>PostgreSQL 18 / MySQL 8.0 / SQLite 官方文件、Use The Index, Luke（共 17 篇）</td></tr>
+      <tr><td>驗證方式</td><td>簡報中 23 段 SQL 以 Python 內建 sqlite3 實跑並逐字比對輸出</td></tr>
+      <tr><td>檢查關卡</td><td>G1 覆蓋率（4 條規則 × 19 條目）、G2 忠實度（5 條規則 × 18 頁）</td></tr>
+      <tr><td>最近一次執行</td><td>SQL 23/23、G1 19/19、G2 18/18 通過；Wiki 條目使用率 19/19</td></tr>
+    </table>
+    <p class="links">
+      原始碼與流程紀錄：<a href="https://github.com/HSIN-YU-LIN/llm-wiki-sql">GitHub repo</a> ·
+      <a href="https://github.com/HSIN-YU-LIN/llm-wiki-sql/blob/main/RUN_LOG.md">RUN_LOG.md</a>（執行紀錄）·
+      <a href="https://github.com/HSIN-YU-LIN/llm-wiki-sql/blob/main/SUBMISSION.md">SUBMISSION.md</a>（流程設計與反思）
+    </p>
+    <p class="links" style="margin-top:14px">
+      任何人可自行重現檢查結果：clone 後依序執行
+      <code>verify/examples.py</code>、<code>scripts/gate_coverage.py</code>、<code>scripts/gate_fidelity.py</code>（僅需 Python 3）。
+    </p>
+  </div>
+</div>
+</body>
+</html>
