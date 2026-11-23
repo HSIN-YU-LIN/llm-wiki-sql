@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>你的查詢為什麼慢？從一次 SELECT 看懂 SQL 怎麼被執行</title>
+<style>
+:root{
+  --paper:#faf8f4; --ink:#1f1d1a; --ink2:#55514a; --ink3:#8a847a;
+  --line:#e2ddd3; --teal:#0f6e56; --teal-bg:#e4f2ec; --amber:#8a5a0b;
+  --amber-bg:#fbf0dc; --red:#9e3030; --red-bg:#fbeaea; --code-bg:#f2efe8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  line-height:1.75; -webkit-font-smoothing:antialiased;
+}
+#stage{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 24px 96px}
+.slide{display:none;width:100%;max-width:880px;padding:56px 0 24px;animation:in .28s ease}
+.slide.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.kicker{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:600;margin-bottom:14px}
+h1{font-size:40px;line-height:1.3;font-weight:700;letter-spacing:-.01em;margin-bottom:18px}
+h2{font-size:30px;line-height:1.35;font-weight:700;letter-spacing:-.01em;margin-bottom:8px}
+.sub{font-size:17px;color:var(--ink2);margin-bottom:28px}
+p{font-size:16.5px;color:var(--ink);margin-bottom:14px}
+p.muted{color:var(--ink2)}
+ul{margin:0 0 16px 0;padding-left:20px}
+li{font-size:16.5px;margin-bottom:9px}
+strong{font-weight:700}
+code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.9em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;margin-bottom:14px}
+pre code{background:none;padding:0;font-size:14px;line-height:1.65;display:block;white-space:pre}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:16px}
+@media(max-width:760px){.cols{grid-template-columns:1fr}h1{font-size:30px}h2{font-size:24px}}
+.card{border:1px solid var(--line);border-radius:10px;padding:16px 18px;background:#fff}
+.card h3{font-size:15px;font-weight:700;margin-bottom:8px}
+.card.good{border-color:#bcdfd0;background:var(--teal-bg)}
+.card.good h3{color:var(--teal)}
+.card.bad{border-color:#eccaca;background:var(--red-bg)}
+.card.bad h3{color:var(--red)}
+.note{border-left:3px solid var(--amber);background:var(--amber-bg);padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:16px;font-size:15.5px}
+.note b{color:var(--amber)}
+table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:15px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:700;font-size:13.5px;color:var(--ink2);background:#f4f1ea}
+td code{font-size:13px}
+.out{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;color:var(--ink2)}
+.foot{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tag{font-size:11.5px;letter-spacing:.03em;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--ink3);background:#fff}
+.tag.src{color:var(--teal);border-color:#bcdfd0;background:var(--teal-bg)}
+.tag.ver{color:var(--amber);border-color:#e8d2a8;background:var(--amber-bg)}
+#bar{position:fixed;top:0;left:0;height:3px;background:var(--teal);transition:width .25s;z-index:20}
+#nav{position:fixed;bottom:0;left:0;right:0;background:rgba(250,248,244,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:11px 24px;display:flex;justify-content:center;align-items:center;gap:14px;z-index:10}
+#nav button{font:inherit;font-size:14px;padding:6px 15px;border:1px solid var(--line);background:#fff;border-radius:7px;cursor:pointer;color:var(--ink)}
+#nav button:hover:not(:disabled){border-color:var(--teal);color:var(--teal)}
+#nav button:disabled{opacity:.35;cursor:default}
+#count{font-size:13.5px;color:var(--ink3);min-width:92px;text-align:center;font-variant-numeric:tabular-nums}
+.cover{text-align:center;padding-top:14vh}
+.cover h1{font-size:46px}
+.cover .sub{font-size:19px}
+.meta{margin-top:40px;font-size:14px;color:var(--ink3);line-height:2}
+.big{font-size:21px;line-height:1.6;color:var(--ink);margin-bottom:18px}
+.q{font-size:24px;font-weight:700;color:var(--teal);margin:22px 0 14px}
+.tree{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:13.5px;line-height:1.9;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:14px;white-space:pre}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding-left:34px;margin-bottom:7px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:2px;width:22px;height:22px;border-radius:50%;background:var(--teal-bg);color:var(--teal);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="stage">
+
+<!-- 1 -->
+<section class="slide on cover" data-wiki="">
+  <div class="kicker">SQL 效能入門</div>
+  <h1>你的查詢為什麼慢？</h1>
+  <p class="sub">從一次 <code>SELECT</code> 看懂 SQL 怎麼被執行</p>
+  <div class="meta">
+    不需要任何資料庫背景<br>
+    全部 SQL 範例皆於 SQLite 3.53.1 實際執行驗證<br>
+    內容來源：本專案 LLM Wiki（17 篇官方文件、19 條條目）
+  </div>
+  <div class="foot" style="justify-content:center"><span class="tag">按 → 或空白鍵開始</span></div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-wiki="A2">
+  <div class="kicker">01 — 問題</div>
+  <h2>同一個問題，兩種速度</h2>
+  <p class="sub">這兩行 SQL 要的東西一模一樣，但快慢可以差幾千倍。</p>
+  <pre><code>SELECT name FROM employee WHERE dept_id = 1;</code></pre>
+  <p>資料庫可以<strong>從頭到尾讀完整張表</strong>，一列一列比對；也可以<strong>直接跳到第 1 號部門那一段</strong>。</p>
+  <p>你寫的 SQL <strong>沒有指定用哪一種</strong>。</p>
+  <p class="q">那麼，是誰決定的？</p>
+  <p class="muted">這份簡報從「什麼是一張表」開始，一路走到你能自己看出資料庫選了哪一條路。</p>
+  <div class="foot"><span class="tag src">Wiki A2</span></div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-wiki="A1">
+  <div class="kicker">02 — 基礎</div>
+  <h2>先認識一張表</h2>
+  <p>關聯式資料庫把資料存成<strong>表（table）</strong>。<strong>欄（column）</strong>定義結構，<strong>列（row）</strong>是一筆筆資料。</p>
+  <pre><code>CREATE TABLE employee (id, name, dept_id, salary);
+CREATE TABLE department (id, name);</code></pre>
+  <p class="muted">整份簡報都用這兩張表。<code>employee.dept_id</code> 對應到 <code>department.id</code>，這個對應關係就是等一下 JOIN 的依據。</p>
+  <table>
+    <tr><th>id</th><th>name</th><th>dept_id</th><th>salary</th></tr>
+    <tr><td>1</td><td>陳怡君</td><td>1</td><td>62000</td></tr>
+    <tr><td>2</td><td>林志明</td><td>1</td><td>58000</td></tr>
+    <tr><td>3</td><td>王美玲</td><td>2</td><td>51000</td></tr>
+    <tr><td>4</td><td>張家豪</td><td><em style="color:var(--ink3)">NULL</em></td><td>47000</td></tr>
+  </table>
+  <p class="muted">注意第 4 列的 <code>NULL</code>——張家豪還沒分配部門。這個值等一下會惹出麻煩。</p>
+  <div class="foot"><span class="tag src">Wiki A1</span><span class="tag ver">✓ 已實跑</span></div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-wiki="A1,A2">
+  <div class="kicker">03 — 基礎</div>
+  <h2>問第一個問題</h2>
+  <p>一個查詢只需要兩個動作：<strong>挑欄位</strong>和<strong>挑列</strong>。</p>
+  <pre><code>SELECT name, salary     -- 挑欄位
+FROM   employee         -- 從哪張表
+WHERE  dept_id = 1;     -- 挑列</code></pre>
+  <div class="cols">
+    <div class="card"><h3>執行結果</h3>
+      <div class="out">陳怡君 | 62000<br>林志明 | 58000</div>
+    </div>
+    <div class="card"><h3>數學上的對應</h3>
+      <p style="font-size:15px;margin:0">
+        <code>SELECT</code> 是<strong>投影</strong>（挑欄）<br>
+        <code>WHERE</code> 是<strong>選擇</strong>（挑列）<br>
+        SQL 本質上是關係代數的語法糖。
+      </p>
+    </div>
+  </div>
+  <p class="muted">就這樣。接下來所有複雜的東西，都是在這兩個動作上加料。</p>
+  <div class="foot"><span class="tag src">Wiki A1</span><span class="tag src">Wiki A2</span><span class="tag ver">✓ 已實跑</span></div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-wiki="A4">
+  <div class="kicker">04 — JOIN</div>
+  <h2>把兩張表接起來</h2>
+  <p><code>JOIN</code> 依條件把兩張表的列配對。差別只在<strong>配不到的列怎麼辦</strong>。</p>
+  <div class="cols">
+    <div class="card bad"><h3>INNER JOIN — 配不到就丟掉</h3>
+      <pre style="margin:0 0 10px"><code>SELECT e.name, d.name
+FROM employee e
+INNER JOIN department d
+  ON e.dept_id = d.id;</code></pre>
+      <div class="out">陳怡君 | 工程<br>林志明 | 工程<br>王美玲 | 行銷</div>
+      <p style="font-size:14px;color:var(--red);margin:10px 0 0">張家豪不見了（他的 dept_id 是 NULL）</p>
+    </div>
+    <div class="card good"><h3>LEFT JOIN — 左表每列都留</h3>
+      <pre style="margin:0 0 10px"><code>SELECT e.name, d.name
+FROM employee e
+LEFT JOIN department d
+  ON e.dept_id = d.id;</code></pre>
+      <div class="out">陳怡君 | 工程<br>林志明 | 工程<br>王美玲 | 行銷<br>張家豪 | NULL</div>
+      <p style="font-size:14px;color:var(--teal);margin:10px 0 0">配不到的用 NULL 補齊</p>
+    </div>
+  </div>
+  <p class="muted"><code>RIGHT JOIN</code> 反過來保留右表；<code>FULL OUTER JOIN</code> 兩邊都保留；<code>CROSS JOIN</code> 是笛卡兒積，N 列配 M 列得 N×M 列。</p>
+  <div class="foot"><span class="tag src">Wiki A4</span><span class="tag ver">✓ 已實跑</span></div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-wiki="A4,C5">
+  <div class="kicker">05 — JOIN</div>
+  <h2>JOIN 的第一個陷阱</h2>
+  <p class="big">同一個條件，放在 <code>ON</code> 和放在 <code>WHERE</code>，結果不一樣。</p>
+  <div class="cols">
+    <div class="card good"><h3>放在 ON — 連接之前套用</h3>
+      <pre style="margin:0 0 10px"><code>LEFT JOIN department d
+  ON e.dept_id = d.id
+ AND d.name = '工程'</code></pre>
+      <div class="out">陳怡君 | 工程<br>林志明 | 工程<br>王美玲 | NULL<br>張家豪 | NULL</div>
+      <p style="font-size:14px;color:var(--teal);margin:10px 0 0"><strong>4 列</strong>，外連接的行為保住了</p>
+    </div>
+    <div class="card bad"><h3>放在 WHERE — 連接之後套用</h3>
+      <pre style="margin:0 0 10px"><code>LEFT JOIN department d
+  ON e.dept_id = d.id
+WHERE d.name = '工程'</code></pre>
+      <div class="out">陳怡君 | 工程<br>林志明 | 工程</div>
+      <p style="font-size:14px;color:var(--red);margin:10px 0 0"><strong>2 列</strong>，補上的 NULL 全被濾掉了</p>
+    </div>
+  </div>
+  <div class="note"><b>為什麼：</b><code>ON</code> 決定「哪些列算配對」，在連接時套用；<code>WHERE</code> 決定「哪些列留下」，在連接完成後套用。被 NULL 補齊的那些列，<code>d.name</code> 是 NULL，所以 <code>d.name = '工程'</code> 不成立，整列被丟掉——<strong>LEFT JOIN 就這樣退化成 INNER JOIN。</strong></div>
+  <p class="muted">內連接時兩種寫法等價，外連接時不等價。這是 LEFT JOIN 最常見的 bug。</p>
+  <div class="foot"><span class="tag src">Wiki A4</span><span class="tag src">Wiki C5</span><span class="tag ver">✓ 已實跑</span></div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-wiki="A3">
+  <div class="kicker">06 — 執行順序</div>
+  <h2>寫的順序不是執行的順序</h2>
+  <p>你<strong>寫</strong>的順序是 <code>SELECT → FROM → WHERE → GROUP BY → ORDER BY</code>。<br>資料庫<strong>執行</strong>的順序完全不同：</p>
+  <ol class="steps">
+    <li><code>FROM</code>　把表組合成一張中間虛擬表</li>
+    <li><code>WHERE</code>　逐<strong>列</strong>過濾（條件為 false <em>或 NULL</em> 的列被丟棄）</li>
+    <li><code>GROUP BY</code>　分組，計算聚合</li>
+    <li><code>HAVING</code>　逐<strong>組</strong>過濾</li>
+    <li><code>SELECT</code>　此時才計算輸出欄位</li>
+    <li><code>ORDER BY</code> → <code>LIMIT</code></li>
+  </ol>
+  <p>這解釋了兩件讓初學者困惑的事：</p>
+  <ul>
+    <li><strong>為什麼過濾「組」要用 <code>HAVING</code> 不是 <code>WHERE</code>？</strong>　因為 <code>WHERE</code>（第 2 步）執行時，組還不存在。</li>
+    <li><strong>為什麼別名有時能用有時不能？</strong>　別名在第 5 步才產生。</li>
+  </ul>
+  <div class="note"><b>PostgreSQL 的規則：</b>輸出欄位別名<strong>可以</strong>用在 <code>ORDER BY</code> 與 <code>GROUP BY</code>，<strong>不能</strong>用在 <code>WHERE</code> 與 <code>HAVING</code>。<br>
+  <b>但 SQLite 不一樣：</b>實測 SQLite 3.53.1 <strong>允許</strong>在 <code>WHERE</code> 中引用別名（<code>WHERE annual &gt; 600000</code> 正常執行）。這是非 SQL 標準的擴充。<br>
+  <span style="color:var(--ink2)">→ 這類「換個引擎就不一樣」的規則，是本主題最容易出錯的地方，第 17 頁會再談。</span></div>
+  <div class="foot"><span class="tag src">Wiki A3</span><span class="tag ver">✓ 已實跑（含雙引擎差異）</span></div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-wiki="A5,A6,C5">
+  <div class="kicker">07 — NULL</div>
+  <h2>NULL 不是值，是「不知道」</h2>
+  <p>任何運算子碰到 NULL，結果<strong>既不是 true 也不是 false，而是 unknown</strong>。</p>
+  <pre><code>SELECT 7 = NULL;     -- 結果是 NULL，不是 false
+SELECT 7 &lt;&gt; NULL;    -- 結果也是 NULL</code></pre>
+  <p>兩個未知值無法被認定相等，所以比較不可能產生 true。推論出一個關鍵後果：</p>
+  <div class="cols">
+    <div class="card bad"><h3>✗ 永遠查不到東西</h3>
+      <pre style="margin:0 0 8px"><code>WHERE dept_id = NULL</code></pre>
+      <div class="out">（0 列）</div>
+    </div>
+    <div class="card good"><h3>✓ 正確寫法</h3>
+      <pre style="margin:0 0 8px"><code>WHERE dept_id IS NULL</code></pre>
+      <div class="out">張家豪</div>
+    </div>
+  </div>
+  <p>而且因為 <code>WHERE</code> 會丟棄條件為 <strong>false 或 NULL</strong> 的列，NULL 在 <code>WHERE</code> 中的效果等同於 false——這就是上一頁 LEFT JOIN 陷阱的底層原因。</p>
+  <div class="note"><b>順帶一提，計數也受影響：</b><code>COUNT(*)</code> 計算<strong>輸入列數</strong>，不管欄位值是否為 NULL；<code>COUNT(dept_id)</code> 只計算該欄<strong>不為 NULL</strong> 的列。<br>
+  實測：<code>SELECT COUNT(*), COUNT(dept_id) FROM employee;</code> → <code>4 | 3</code></div>
+  <div class="foot"><span class="tag src">Wiki A5</span><span class="tag src">Wiki A6</span><span class="tag src">Wiki C5</span><span class="tag ver">✓ 已實跑</span></div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-wiki="A2">
+  <div class="kicker">08 — 轉折</div>
+  <h2>關鍵轉折：你沒有決定「怎麼做」</h2>
+  <p class="big">到這裡為止，我們學的都是「怎麼說出想要什麼」。<br>但 SQL 是<strong>宣告式（declarative）</strong>語言——你只說要什麼，不說怎麼拿。</p>
+  <p>同一個 SQL 陳述式，可能有數十、數百甚至數千種實作方式，取決於查詢的複雜度與資料庫結構。</p>
+  <div class="card" style="margin-bottom:18px">
+    <h3>查詢最佳化器（query optimizer）</h3>
+    <p style="margin:0">資料庫內部的一個元件，任務是：在所有等價的執行方式中，選出<strong>磁碟 I/O 與 CPU 開銷最小</strong>的那一個。PostgreSQL 的做法是為每個查詢建出查詢計畫，選擇<strong>預估成本最低</strong>者。</p>
+  </div>
+  <p class="q">所以「為什麼慢」這個問題，真正在問的是：<br>最佳化器為什麼選了那條慢的路？</p>
+  <p class="muted">從演算法的角度看，最佳化器是在「等價查詢計畫」構成的空間裡做搜尋，目標函數是預估成本。接下來三頁，我們看它在搜尋什麼。</p>
+  <div class="foot"><span class="tag src">Wiki A2</span></div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-wiki="B1">
+  <div class="kicker">09 — 成本</div>
+  <h2>慢在哪裡：全表掃描的成本</h2>
+  <p>沒有索引時，資料庫必須<strong>從第一列開始讀完整張表</strong>。成本隨表的大小成長。</p>
+  <p>資料不是一列一列從磁碟拿的，而是以<strong>頁（page）</strong>為單位。PostgreSQL 的頁通常是 <strong>8 kB</strong>，表與索引都存成固定大小的頁陣列。</p>
+  <div class="tree">PostgreSQL 的一頁（8 kB）
+┌──────────────────────────────┐
+│ PageHeaderData   24 bytes    │
+├──────────────────────────────┤
+│ 行指標 →→→                    │  每筆 4 bytes，(偏移量, 長度)
+├──────────────────────────────┤
+│                              │
+│        剩餘空間               │
+│                              │
+├──────────────────────────────┤
+│                    ←←← 列資料 │  一個 item 就是一列
+└──────────────────────────────┘</div>
+  <p>所以成本模型也以頁計價。PostgreSQL 預設 <code>seq_page_cost = 1.0</code>，代表一次循序頁讀取。官方範例：</p>
+  <div class="note"><b>表 <code>tenk1</code>：345 頁、10,000 列</b><br>
+  全表掃描成本 = (345 × <code>seq_page_cost</code> 1.0) + (10000 × <code>cpu_tuple_cost</code> 0.01) = <strong>445</strong><br>
+  <span style="color:var(--ink2)">→ 成本 = 讀頁成本 + 每列的 CPU 成本，而<strong>讀頁是主要項</strong>。想變快，就要少讀頁。</span></div>
+  <div class="foot"><span class="tag src">Wiki B1</span></div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-wiki="B2">
+  <div class="kicker">10 — 索引</div>
+  <h2>索引怎麼救：B-tree</h2>
+  <p>索引就是一個<strong>資料結構</strong>。PostgreSQL 與 MySQL 的預設索引型別都是 <strong>B-tree</strong>。</p>
+  <div class="tree">            ┌─────── 根節點 ───────┐
+            │  指向下層，記錄最大鍵值  │
+            └──┬───────────┬───────┘
+               ▼           ▼
+          ┌────────┐  ┌────────┐      分支節點（路標）
+          └──┬──┬──┘  └──┬──┬──┘
+             ▼  ▼        ▼  ▼
+   葉節點 [..]↔[..]↔[..]↔[..]↔[..]     雙向鏈結串列，維持邏輯順序</div>
+  <div class="cols">
+    <div class="card"><h3>為什麼樹很淺</h3>
+      <p style="font-size:15px;margin:0">每個節點容納<strong>數百筆</strong>項目。樹深隨項目數呈<strong>對數成長</strong>，每多一層容量就乘上分支因子。<br><br>
+      實務上<strong>數百萬筆的索引，樹深通常只有四到五層</strong>。</p>
+    </div>
+    <div class="card"><h3>為什麼查找快</h3>
+      <p style="font-size:15px;margin:0">從根節點往下，每層掃描節點內項目找到第一個 ≥ 搜尋鍵的值，沿參照下行，直到葉節點。<br><br>
+      因為樹是<strong>平衡</strong>的，每次查找步數相同，<strong>等於樹深</strong>。</p>
+    </div>
+  </div>
+  <p>實測（SQLite，<code>employee</code> 的 <code>dept_id</code> 上建索引）：</p>
+  <pre><code>EXPLAIN QUERY PLAN SELECT name FROM employee WHERE dept_id = 1;
+→ SEARCH employee USING INDEX idx_emp_dept (dept_id=?)</code></pre>
+  <p class="muted"><code>SEARCH</code> 而非 <code>SCAN</code>——資料庫不再讀完整張表了。</p>
+  <div class="foot"><span class="tag src">Wiki B2</span><span class="tag ver">✓ 已實跑</span></div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-wiki="B4,C5">
+  <div class="kicker">11 — 索引失效</div>
+  <h2>索引救不了的時候</h2>
+  <p>索引存的是<strong>原始值、按序排列</strong>。只要查詢條件破壞了「有序前綴」這件事，索引就用不上。以下全部於 SQLite 實測：</p>
+  <table>
+    <tr><th style="width:46%">查詢條件</th><th>執行計畫</th><th style="width:22%">結果</th></tr>
+    <tr><td><code>name LIKE '%君'</code></td><td class="out">SCAN employee</td><td style="color:var(--red)">✗ 全表掃描</td></tr>
+    <tr><td><code>UPPER(name) = '陳怡君'</code></td><td class="out">SCAN employee</td><td style="color:var(--red)">✗ 全表掃描</td></tr>
+    <tr><td><code>name &gt;= '陳' AND name &lt; '陳倀'</code></td><td class="out">SEARCH … USING INDEX idx_emp_name</td><td style="color:var(--teal)">✓ 走索引</td></tr>
+  </table>
+  <p><strong>後綴通配</strong>失效，是因為索引按開頭排序——「以某字結尾」的資料散落在整棵樹中。<br>
+  <strong>函數包住欄位</strong>失效，是因為索引存的是 <code>name</code> 的值，不是 <code>UPPER(name)</code> 的值。補救方式是建<strong>函數式索引</strong>（PostgreSQL 7.4 起）或<strong>生成欄位上的索引</strong>（MySQL 5.7 起）。</p>
+  <div class="note"><b>但「前綴通配就一定能用索引」是錯的。</b>SQLite 的 LIKE 最佳化有六項條件，必須全部滿足。實測同一句 <code>name LIKE '陳%'</code>：
+  <table style="margin:10px 0 0">
+    <tr><th>欄位設定</th><th>執行計畫</th></tr>
+    <tr><td>預設 BINARY collation</td><td class="out" style="color:var(--red)">SCAN employee　✗</td></tr>
+    <tr><td><code>COLLATE NOCASE</code></td><td class="out" style="color:var(--teal)">SEARCH … USING INDEX　✓</td></tr>
+    <tr><td><code>PRAGMA case_sensitive_like=ON</code></td><td class="out" style="color:var(--teal)">SEARCH … USING INDEX　✓</td></tr>
+  </table>
+  <span style="color:var(--ink2)">而手寫的等價範圍條件在三種設定下<strong>都</strong>走索引。所以不是索引不能用，是<strong>最佳化的前提條件沒成立</strong>。</span></div>
+  <div class="foot"><span class="tag src">Wiki B4</span><span class="tag src">Wiki C5</span><span class="tag ver">✓ 已實跑（6 組對照）</span></div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-wiki="B3,B5">
+  <div class="kicker">12 — 複合索引</div>
+  <h2>多欄索引：順序決定一切</h2>
+  <p>複合索引是<strong>跨多欄建的單一 B-tree</strong>。項目先依第一欄排序，第二欄只在第一欄相同的列之間決定順序。</p>
+  <div class="note"><b>像一本先依姓、再依名排序的電話簿。</b>只知道姓，可以查；只知道名，幾乎無法查——因為同名的人散落在整本書裡。</div>
+  <p>實測（索引建在 <code>employee(dept_id, salary)</code>）：</p>
+  <div class="cols">
+    <div class="card good"><h3>✓ 約束了前導欄位</h3>
+      <pre style="margin:0 0 8px"><code>WHERE dept_id = 1
+  AND salary &gt; 50000</code></pre>
+      <div class="out" style="color:var(--teal)">SEARCH employee USING INDEX<br>idx_emp_dept_salary<br>(dept_id=? AND salary&gt;?)</div>
+    </div>
+    <div class="card bad"><h3>✗ 只約束非前導欄位</h3>
+      <pre style="margin:0 0 8px"><code>WHERE salary &gt; 50000</code></pre>
+      <div class="out" style="color:var(--red)">SCAN employee</div>
+      <p style="font-size:14px;margin:10px 0 0">索引完全用不上</p>
+    </div>
+  </div>
+  <p><strong>最左前綴規則：第一欄永遠可用於搜尋；其他欄位只有在它前面的欄位也被約束時才可用。</strong></p>
+  <p class="muted">MySQL 說法：最佳化器可使用複合索引的任何<strong>最左前綴</strong>。索引 <code>(a, b, c)</code> 支援 <code>(a)</code>、<code>(a, b)</code>、<code>(a, b, c)</code> 三種查找。<br>
+  PostgreSQL 的建議較保守：複合索引應節制使用，<strong>超過三欄的索引除非表的使用方式極為固定，否則不太可能有幫助</strong>。</p>
+  <div class="note"><b>額外好處：覆蓋索引。</b>如果查詢需要的欄位<strong>全部都在索引裡</strong>，資料庫連表都不用回去讀。SQLite 實測同一個索引 <code>(dept_id, salary)</code>：
+  <table style="margin:10px 0 0">
+    <tr><th>查詢</th><th>執行計畫</th></tr>
+    <tr><td><code>SELECT dept_id, salary …</code></td><td class="out" style="color:var(--teal)">SEARCH … USING <strong>COVERING INDEX</strong>　✓ 不回表</td></tr>
+    <tr><td><code>SELECT dept_id, name …</code></td><td class="out">SEARCH … USING INDEX　需回表取 name</td></tr>
+  </table>
+  <span style="color:var(--ink2)">這也是 <code>SELECT *</code> 幾乎必然要回表的原因。PostgreSQL 稱之為 index-only scan，並可用 <code>INCLUDE</code> 把額外欄位塞進索引；但它還需要可見性映射配合，不是一定省得到。</span></div>
+  <div class="foot"><span class="tag src">Wiki B3</span><span class="tag src">Wiki B5</span><span class="tag ver">✓ 已實跑</span></div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-wiki="B6">
+  <div class="kicker">13 — 代價</div>
+  <h2>索引不是免費的</h2>
+  <p>看到這裡很容易得出「那就每欄都建索引」的結論。那是錯的。</p>
+  <div class="cols">
+    <div class="card bad"><h3>浪費空間</h3><p style="font-size:15px;margin:0">每個索引都佔儲存空間，即使從來沒有查詢用到它。</p></div>
+    <div class="card bad"><h3>浪費最佳化器時間</h3><p style="font-size:15px;margin:0">資料庫必須評估所有可用索引才能決定用哪一個，多餘的索引增加規劃開銷。</p></div>
+  </div>
+  <div class="card bad" style="margin-bottom:16px"><h3>拖慢所有寫入</h3>
+    <p style="font-size:15px;margin:0">insert、update、delete 都必須同時更新該表上的<strong>每一個</strong>索引。資料庫在每次寫入時自動維護 B-tree，這就是代價來源。</p></div>
+  <p>所以目標不是「索引越多越好」，而是<strong>最佳的索引集合</strong>：足以讓重要查詢變快，而不必為效益低又拖慢寫入的索引付出代價。</p>
+  <div class="note"><b>誠實的但書：</b>MySQL 官方文件<strong>沒有量化</strong>這些成本，也沒有給出選擇索引的規則。任何「索引會讓寫入慢 N 倍」的說法都不是來自官方文件。</div>
+  <div class="foot"><span class="tag src">Wiki B6</span></div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-wiki="C1,C2,C3">
+  <div class="kicker">14 — 最佳化器</div>
+  <h2>資料庫怎麼決定</h2>
+  <p>最佳化器要做兩個決定：<strong>用什麼方式存取每張表</strong>，以及<strong>用什麼演算法接起來</strong>。</p>
+  <p>PostgreSQL 的三種連接策略：</p>
+  <table>
+    <tr><th style="width:24%">策略</th><th>怎麼運作</th><th style="width:30%">官方說明的優勢</th></tr>
+    <tr><td><strong>Nested loop</strong></td><td>對左側的每一列，把右側掃一次</td><td>容易實作但<strong>可能非常慢</strong>；右側能用索引掃描時是好選擇</td></tr>
+    <tr><td><strong>Merge join</strong></td><td>兩邊依連接屬性排序，再平行掃描合併</td><td><strong>每個關聯只掃一次</strong></td></tr>
+    <tr><td><strong>Hash join</strong></td><td>右側載入雜湊表，左側逐列探測</td><td>文件未給出偏好指引</td></tr>
+  </table>
+  <p>而選哪一種，依據的是<strong>統計估計</strong>，不是真實資料：</p>
+  <ul>
+    <li>PostgreSQL 的列數估計來自 <code>ANALYZE</code> 的<strong>隨機取樣</strong>，會在不同次執行間變動。</li>
+    <li>SQLite 沒有統計時用<strong>猜測值</strong>（例如假設每個最左索引值平均有 10 筆重複）。</li>
+    <li>MySQL 的 <code>rows</code> 對 InnoDB 而言是估計值。</li>
+  </ul>
+  <div class="note"><b>這解釋了「昨天很快今天很慢」：</b>統計過時 → 估計失準 → 選錯計畫。PostgreSQL 文件也警告成本<strong>不隨表大小線性變化</strong>，玩具表上的結果不可外推到正式環境。</div>
+  <div class="foot"><span class="tag src">Wiki C1</span><span class="tag src">Wiki C2</span><span class="tag src">Wiki C3</span></div>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-wiki="C4,D2">
+  <div class="kicker">15 — 動手</div>
+  <h2>自己看出來</h2>
+  <p>不用猜。每個資料庫都有指令可以直接問它「你打算怎麼執行」。</p>
+  <pre><code>-- SQLite
+EXPLAIN QUERY PLAN SELECT name FROM employee WHERE salary = 62000;
+→ SCAN employee</code></pre>
+  <p><code>SCAN</code> 就是答案：<code>salary</code> 上沒有索引，所以要讀完整張表。建了索引之後同一句會變成 <code>SEARCH … USING INDEX …</code>。</p>
+  <p><strong>你只需要認得兩個字：</strong></p>
+  <div class="cols">
+    <div class="card bad"><h3>SCAN</h3><p style="font-size:15px;margin:0">全表掃描。資料量大時就是你要找的問題。</p></div>
+    <div class="card good"><h3>SEARCH … USING INDEX</h3><p style="font-size:15px;margin:0">走索引。後面括號會告訴你用了哪些欄位。</p></div>
+  </div>
+  <div class="note"><b>其他引擎的指令不同</b>（第 17 頁詳述）：PostgreSQL 用 <code>EXPLAIN</code>（加 <code>ANALYZE</code> 會<strong>實際執行</strong>並顯示真實列數與毫秒數）；MySQL 用 <code>EXPLAIN</code>，看 <code>type</code> 欄位是不是 <code>ALL</code>、<code>key</code> 是不是 <code>NULL</code>。</div>
+  <p class="muted">PostgreSQL 判讀重點：<strong>預估列數與實際列數是否接近</strong>。差很多就代表統計過時。文件也說明完全吻合在實務上是不尋常的。</p>
+  <div class="foot"><span class="tag src">Wiki C4</span><span class="tag src">Wiki D2</span><span class="tag ver">✓ 已實跑</span></div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-wiki="D1,D2">
+  <div class="kicker">16 — 但書</div>
+  <h2>一個重要但書：三家引擎不一樣</h2>
+  <p class="big">前面每一條規則，都有它適用的引擎與版本。把某一家的行為當成「資料庫都這樣」，是這個主題最常見的錯誤。</p>
+  <table>
+    <tr><th style="width:22%"></th><th>PostgreSQL 18</th><th>MySQL 8.0</th><th>SQLite</th></tr>
+    <tr><td><strong>執行計畫指令</strong></td><td><code>EXPLAIN</code> / <code>EXPLAIN ANALYZE</code></td><td><code>EXPLAIN</code></td><td><code>EXPLAIN QUERY PLAN</code></td></tr>
+    <tr><td><strong>輸出形式</strong></td><td>計畫節點樹</td><td>表格，一列一張表</td><td>高階概觀</td></tr>
+    <tr><td><strong>沒用索引的訊號</strong></td><td><code>Seq Scan</code></td><td><code>type: ALL</code>、<code>key: NULL</code></td><td><code>SCAN</code></td></tr>
+    <tr><td><strong>連接演算法</strong></td><td>nested loop / merge / hash</td><td>BNL / BKA / hash join</td><td><strong>只有 nested loop</strong></td></tr>
+    <tr><td><strong>WHERE 能用別名？</strong></td><td>不能（文件明言）</td><td>—</td><td><strong>可以</strong>（非標準擴充）</td></tr>
+  </table>
+  <div class="note"><b>本簡報的誠實聲明：</b>所有標示「✓ 已實跑」的驗證都是在 <strong>SQLite 3.53.1</strong> 上執行的。這些結果<strong>只能證明 SQLite 的行為</strong>，不能當作 PostgreSQL 或 MySQL 的證據。凡是 PostgreSQL / MySQL 的陳述，依據的是其官方文件，不是實測。</div>
+  <p class="muted">製作過程中，忠實度檢查抓到的兩個錯誤——「別名不能用在 WHERE」和「LIKE 前綴一定走索引」——<strong>都是把單一引擎的行為當成通用規則</strong>。這一頁就是為此而存在。</p>
+  <div class="foot"><span class="tag src">Wiki D1</span><span class="tag src">Wiki D2</span></div>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-wiki="A2,B2,C1">
+  <div class="kicker">17 — 收束</div>
+  <h2>回到第一頁的問題</h2>
+  <pre><code>SELECT name FROM employee WHERE dept_id = 1;</code></pre>
+  <p>現在這句話可以完整回答了：</p>
+  <ol class="steps">
+    <li>你寫的是<strong>宣告式</strong>的 SQL，只說要什麼。</li>
+    <li><strong>最佳化器</strong>在所有等價執行方式中，依<strong>統計估計</strong>挑成本最低的。</li>
+    <li>沒有索引，它只能<strong>全表掃描</strong>，一頁一頁讀。</li>
+    <li>有合適的索引，它能走 <strong>B-tree</strong>，數百萬筆資料只需走訪四到五層。</li>
+    <li>但索引有<strong>失效條件</strong>（前綴通配、函數包裹、非前導欄位、collation 不符）也有<strong>代價</strong>（空間、寫入）。</li>
+    <li>要知道它到底選了哪條路，就問它：SQLite 用 <code>EXPLAIN QUERY PLAN</code>，PostgreSQL 與 MySQL 用 <code>EXPLAIN</code>——<strong>不要猜</strong>。</li>
+  </ol>
+  <div class="note" style="border-left-color:var(--teal);background:var(--teal-bg)"><b style="color:var(--teal)">一句話帶走：</b>SQL 讓你不必管「怎麼做」，但當它變慢時，你必須知道資料庫在你背後做了什麼選擇——以及你的寫法如何限制了它的選項。</div>
+  <div class="foot">
+    <span class="tag src">Wiki A2</span><span class="tag src">Wiki B2</span><span class="tag src">Wiki C1</span>
+    <span class="tag">來源：17 篇官方文件 · 19 條 Wiki 條目 · 21 例 SQL 實跑驗證</span>
+  </div>
+</section>
+
+</div>
+
+<div id="nav">
+  <button id="prev">← 上一頁</button>
+  <span id="count"></span>
+  <button id="next">下一頁 →</button>
+</div>
+
+<script>
+(function(){
+  var s = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var i = 0;
+  var prev = document.getElementById('prev'),
+      next = document.getElementById('next'),
+      count = document.getElementById('count'),
+      bar = document.getElementById('bar');
+  function show(n){
+    i = Math.max(0, Math.min(s.length - 1, n));
+    s.forEach(function(el, k){ el.classList.toggle('on', k === i); });
+    count.textContent = (i + 1) + ' / ' + s.length;
+    bar.style.width = ((i + 1) / s.length * 100) + '%';
+    prev.disabled = (i === 0);
+    next.disabled = (i === s.length - 1);
+    window.scrollTo(0, 0);
+    try { location.hash = 'p' + (i + 1); } catch (e) {}
+  }
+  prev.addEventListener('click', function(){ show(i - 1); });
+  next.addEventListener('click', function(){ show(i + 1); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') { show(0); }
+    else if (e.key === 'End') { show(s.length - 1); }
+  });
+  var m = (location.hash || '').match(/^#p(\d+)$/);
+  show(m ? parseInt(m[1], 10) - 1 : 0);
+})();
+</script>
+</body>
+</html>
