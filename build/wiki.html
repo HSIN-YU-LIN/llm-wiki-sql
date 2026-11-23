@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL 查詢執行與效能 — LLM Wiki</title>
+<style>
+:root{--paper:#faf8f4;--ink:#1f1d1a;--ink2:#55514a;--ink3:#8a847a;--line:#e2ddd3;
+--teal:#0f6e56;--teal-bg:#e4f2ec;--amber:#8a5a0b;--amber-bg:#fbf0dc;--code:#f2efe8;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font:16px/1.75 system-ui,"Noto Sans TC",sans-serif;
+display:grid;grid-template-columns:290px 1fr;min-height:100vh}
+nav{border-right:1px solid var(--line);padding:26px 18px;position:sticky;top:0;height:100vh;overflow:auto}
+nav h1{font-size:17px;line-height:1.4;margin-bottom:4px}
+nav .sub{font-size:12.5px;color:var(--ink3);margin-bottom:20px}
+.navgrp{margin-bottom:16px}
+.navcat{font-size:11.5px;letter-spacing:.06em;color:var(--ink3);margin-bottom:5px}
+nav a{display:block;padding:4px 8px;border-radius:5px;color:var(--ink2);text-decoration:none;font-size:13.5px}
+nav a b{color:var(--teal);font-weight:600;margin-right:5px}
+nav a:hover{background:var(--teal-bg)}
+nav a.on{background:var(--teal-bg);color:var(--ink)}
+main{padding:44px 54px;max-width:900px}
+.intro{border:1px solid var(--line);background:#fff;border-radius:10px;padding:20px 24px;margin-bottom:40px}
+.intro h2{font-size:19px;margin-bottom:10px;border:0;padding:0}
+.intro p{font-size:14.5px;color:var(--ink2);margin-bottom:8px}
+article{margin-bottom:52px;scroll-margin-top:20px}
+article h2{font-size:21px;border-bottom:2px solid var(--teal);padding-bottom:7px;margin-bottom:16px}
+article h3{font-size:16px;margin:22px 0 8px;color:var(--teal)}
+article p,article li{font-size:14.8px;color:var(--ink2)}
+article ul,article ol{margin:8px 0 8px 22px}
+article li{margin-bottom:4px}
+code{background:var(--code);padding:1px 5px;border-radius:3px;font:13.5px ui-monospace,monospace;color:#7a2d2d}
+pre{background:var(--code);padding:12px 14px;border-radius:7px;overflow:auto;margin:10px 0}
+pre code{background:0;padding:0;color:var(--ink)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.8px}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{background:var(--teal-bg)}
+blockquote.warn{background:var(--amber-bg);border-left:3px solid var(--amber);
+padding:11px 15px;margin:14px 0;border-radius:0 6px 6px 0}
+blockquote.warn p{color:var(--amber);font-size:14px}
+.badge{float:right;font-size:11.5px;color:var(--ink3);font-weight:400;background:var(--code);
+padding:2px 9px;border-radius:11px;margin-top:3px}
+a.cite{display:inline-block;font-size:11px;background:var(--teal-bg);color:var(--teal);
+padding:0 5px;border-radius:3px;text-decoration:none;vertical-align:1px;font-weight:600}
+a.cite:hover{background:var(--teal);color:#fff}
+#src td:first-child{color:var(--teal);font-weight:600;white-space:nowrap}
+@media(max-width:860px){body{grid-template-columns:1fr}nav{position:static;height:auto}main{padding:28px 20px}}
+</style></head><body>
+<nav><h1>SQL 查詢執行與效能</h1><div class="sub">LLM Wiki · 19 條條目 · 17 篇來源<br>建立於 2026-11-23</div>
+<div class="navgrp"><div class="navcat">A · 關聯式模型與 SQL 語意</div><a href="#A1" data-code="A1"><b>A1</b> 關聯式模型：表、列、欄、鍵</a><a href="#A2" data-code="A2"><b>A2</b> 宣告式語言與查詢最佳化</a><a href="#A3" data-code="A3"><b>A3</b> 查詢的邏輯執行順序</a><a href="#A4" data-code="A4"><b>A4</b> JOIN 的種類與語意</a><a href="#A5" data-code="A5"><b>A5</b> NULL 與三值邏輯</a><a href="#A6" data-code="A6"><b>A6</b> 聚合與分組</a></div><div class="navgrp"><div class="navcat">B · 儲存與索引</div><a href="#B1" data-code="B1"><b>B1</b> 表的實體儲存與掃描成本</a><a href="#B2" data-code="B2"><b>B2</b> B-tree 索引原理</a><a href="#B3" data-code="B3"><b>B3</b> 複合索引與最左前綴</a><a href="#B4" data-code="B4"><b>B4</b> 索引失效的典型情境</a><a href="#B5" data-code="B5"><b>B5</b> 覆蓋索引與 index-only scan</a><a href="#B6" data-code="B6"><b>B6</b> 索引的代價</a></div><div class="navgrp"><div class="navcat">C · 查詢執行與最佳化器</div><a href="#C1" data-code="C1"><b>C1</b> 執行計畫與最佳化器</a><a href="#C2" data-code="C2"><b>C2</b> JOIN 演算法</a><a href="#C3" data-code="C3"><b>C3</b> 統計資訊與基數估計</a><a href="#C4" data-code="C4"><b>C4</b> 怎麼讀執行計畫</a><a href="#C5" data-code="C5"><b>C5</b> 常見反模式</a></div><div class="navgrp"><div class="navcat">D · 引擎實作差異</div><a href="#D1" data-code="D1"><b>D1</b> 三引擎的索引行為差異</a><a href="#D2" data-code="D2"><b>D2</b> 三引擎執行計畫輸出格式對照</a></div>
+<div class="navgrp"><div class="navcat">附錄</div><a href="#sources"><b>S</b> 來源索引</a></div>
+</nav>
+<main>
+<div class="intro"><h2>關於這份 Wiki</h2>
+<p>主題為 <b>SQL 查詢的執行與效能</b>：從關聯式模型與 SQL 語意出發，到索引結構、查詢最佳化器，
+以及三家資料庫引擎的實作差異。</p>
+<p>建立方式為「先討論、後生成」——先敲定 A～D 四類共 19 條條目的架構與各條目職責，再依架構抓取資料。
+全部 17 篇來源均為一手來源：PostgreSQL 18 / MySQL 8.0 / SQLite 官方文件，以及 Use The Index, Luke。</p>
+<p>條目中每一項陳述後方的綠色標記（如 <a class="cite" href="#sources">S1</a>）是來源引註，可點擊開啟原文。
+琥珀色區塊是 <b>寫稿注意</b>：標記「來源其實沒有說這件事」，供後續產製簡報時避免憑推測補寫。</p></div>
+<article id="A1"><h2>A1 — 關聯式模型：表、列、欄、鍵<span class="badge">3 處引註</span></h2><p><strong>來源</strong>：S6
+<strong>適用範圍</strong>：通用</p>
+<h2>內容</h2>
+<ul>
+<li>關聯式資料庫把資料存成<strong>表（table）</strong>。表由<strong>欄（column）</strong>定義結構，資料以<strong>列（row）</strong>為單位逐筆存放。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+<li>一個查詢的起點是 <code>FROM</code>，它把一或多張表組合成一張<strong>中間虛擬表（intermediate virtual table）</strong>，後續所有子句都在這張虛擬表上運作。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+<li>表與表之間透過欄位值互相參照。例如 <code>t1.num</code> 對應 <code>t2.num</code>，<code>JOIN</code> 就是依這種對應關係把兩張表拼起來。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+</ul>
+<h2>教學用例（來自 S6 官方範例）</h2>
+<pre><code>t1:  num | name        t2:  num | value
+      1  | a                 1  | xxx
+      2  | b                 3  | yyy
+      3  | c                 5  | zzz
+</code></pre>
+<p>此範例貫穿 A4（JOIN 種類），兩者使用同一組資料。</p></article><article id="A2"><h2>A2 — 宣告式語言與查詢最佳化<span class="badge">5 處引註</span></h2><p><strong>來源</strong>：S11, S2
+<strong>適用範圍</strong>：通用</p>
+<h2>內容</h2>
+<ul>
+<li>SQL 最重要的特性是它是<strong>宣告式（declarative）語言</strong>而非程序式語言：使用者描述要什麼結果，不描述如何取得。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+<li>因此，同一個 SQL 陳述式可能有數十、數百甚至數千種實作方式，取決於查詢複雜度與資料庫結構。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+<li>從中挑一個的元件叫<strong>查詢規劃器 / 最佳化器（query planner / optimizer）</strong>。它的任務是選出能以<strong>最少磁碟 I/O 與 CPU 開銷</strong>完成查詢的演算法。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+<li>PostgreSQL 的做法是對每個查詢建出查詢計畫，並選擇<strong>預估成本最低</strong>的那一個。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li>SQLite 採<strong>成本基礎（cost-based）</strong>：估算各競爭計畫的 CPU 與磁碟 I/O 成本，選預期最快者。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+</ul>
+<h2>教學重點</h2>
+<p>「你寫的 SQL 決定要什麼，不決定多快」——整個效能主題的出發點。
+從演算法角度看，最佳化器是在<strong>等價查詢計畫的空間中做搜尋</strong>，目標函數是預估成本。</p></article><article id="A3"><h2>A3 — 查詢的邏輯執行順序<span class="badge">5 處引註</span></h2><p><strong>來源</strong>：S7, S6
+<strong>適用範圍</strong>：PostgreSQL 18 文件明列；概念為 SQL 標準通用</p>
+<h2>內容</h2>
+<p>PostgreSQL SELECT 文件明列的邏輯求值順序（步驟 1–10）：<a class="cite" href="https://www.postgresql.org/docs/18/sql-select.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — SELECT 指令參考">S7</a></p>
+<ol>
+<li><code>WITH</code> 子查詢先計算，作為暫時表供 <code>FROM</code> 參照</li>
+<li><code>FROM</code> 清單計算，多個項目互相 cross join</li>
+<li><code>WHERE</code> 移除不符合條件的列</li>
+<li>若有 <code>GROUP BY</code> 或聚合函數，進行分組並計算聚合；接著 <code>HAVING</code> 移除不符合的<strong>組</strong></li>
+<li>由 <code>SELECT</code> 輸出運算式計算出輸出列</li>
+<li><code>DISTINCT</code> / <code>DISTINCT ON</code> 移除重複列（預設 <code>ALL</code> 保留）</li>
+<li><code>UNION</code> / <code>INTERSECT</code> / <code>EXCEPT</code> 合併多個 SELECT 的結果</li>
+<li><code>ORDER BY</code> 排序</li>
+<li><code>LIMIT</code>（或 <code>FETCH FIRST</code>）與 <code>OFFSET</code> 取子集</li>
+<li>鎖定子句（<code>FOR UPDATE</code> 等）鎖住選出的列</li>
+</ol>
+<p>Table Expressions 文件將前半段描述為一條管線：<code>FROM</code> 建虛擬表 → <code>WHERE</code> 逐列過濾（條件為 false 或 NULL 的列被丟棄，發生在分組之前）→ <code>GROUP BY</code> 分組並計算聚合 → <code>HAVING</code> 過濾組。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></p>
+<h2>別名可用範圍（<strong>經原始文件修正過的重點</strong>）</h2>
+<ul>
+<li>輸出欄位別名<strong>可以</strong>用在 <code>ORDER BY</code> 與 <code>GROUP BY</code>。<code>GROUP BY</code> 可用名稱或序號參照輸出欄位；名稱有歧義時，<code>GROUP BY</code> 視之為輸入欄位。<a class="cite" href="https://www.postgresql.org/docs/18/sql-select.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — SELECT 指令參考">S7</a></li>
+<li>輸出欄位別名<strong>不能</strong>用在 <code>WHERE</code> 與 <code>HAVING</code>，必須完整寫出運算式。<a class="cite" href="https://www.postgresql.org/docs/18/sql-select.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — SELECT 指令參考">S7</a></li>
+<li>文件未明述理由，但由步驟順序可推：<code>WHERE</code>（步驟 3）與 <code>HAVING</code>（步驟 4）都早於輸出運算式的計算（步驟 5）。<a class="cite" href="https://www.postgresql.org/docs/18/sql-select.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — SELECT 指令參考">S7</a></li>
+</ul>
+<blockquote class="warn">
+<p>⚠ 寫稿注意：不可寫成「別名不能用在 WHERE 和 GROUP BY」。GROUP BY 是可以的。</p>
+</blockquote></article><article id="A4"><h2>A4 — JOIN 的種類與語意<span class="badge">10 處引註</span></h2><p><strong>來源</strong>：S6
+<strong>適用範圍</strong>：PostgreSQL 18 文件；語意為 SQL 標準通用</p>
+<h2>內容（沿用 A1 的 t1 / t2 範例）</h2>
+<ul>
+<li><strong>CROSS JOIN</strong>：笛卡兒積，T1 的每一列與 T2 的每一列配對，N 與 M 列產生 N × M 列。等同於 <code>INNER JOIN ... ON TRUE</code>，也等同於用逗號分隔的 FROM 清單。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+<li><strong>INNER JOIN</strong>（未加修飾詞時的預設）：對每一對滿足連接條件的 (T1列, T2列) 輸出一列。<strong>兩邊未配對到的列都被丟棄。</strong><a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+<li><code>SELECT * FROM t1 INNER JOIN t2 ON t1.num = t2.num;</code> → <code>1 a 1 xxx</code> / <code>3 c 3 yyy</code></li>
+<li><strong>LEFT OUTER JOIN</strong>：先做 inner join，再為每一個在 T2 中無配對的 T1 列補上一列，T2 側所有欄位填 NULL。<strong>每一列 T1 至少出現一次。</strong><a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+<li>比 inner join 多出：<code>2 b | NULL | NULL</code></li>
+<li><strong>RIGHT OUTER JOIN</strong>：反向，為每一個未配對的 T2 列補列，T1 側填 NULL。每一列 T2 至少出現一次。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+<li>多出：<code>NULL | NULL | 5 | zzz</code></li>
+<li><strong>FULL OUTER JOIN</strong>：先做 inner join，再把兩邊未配對的列都補上（各自以 NULL 填滿對側）。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+<li><code>OUTER</code> 一律可省略；<code>LEFT</code>、<code>RIGHT</code>、<code>FULL</code> 本身就蘊含外連接。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+</ul>
+<h2>ON 與 WHERE 的關鍵差異（外連接才看得出來）</h2>
+<p><code>ON</code> 接受任何布林運算式，在<strong>連接之前</strong>套用，影響哪些列算配對；<code>WHERE</code> 在<strong>連接之後</strong>套用，影響哪些列留下。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></p>
+<pre><code class="language-sql">SELECT * FROM t1 LEFT JOIN t2 ON t1.num = t2.num AND t2.value = 'xxx';
+-- 3 列：1 a 1 xxx / 2 b NULL NULL / 3 c NULL NULL
+
+SELECT * FROM t1 LEFT JOIN t2 ON t1.num = t2.num WHERE t2.value = 'xxx';
+-- 1 列：1 a 1 xxx
+</code></pre>
+<p>內連接時兩種寫法結果相同；<strong>外連接時不同</strong>。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a>
+這是「LEFT JOIN 後面接 WHERE 會把外連接打回內連接」的官方依據。</p>
+<h2>ON / USING / NATURAL</h2>
+<ul>
+<li><code>USING (a, b)</code> 等價於 <code>ON T1.a = T2.a AND T1.b = T2.b</code>，且輸出會把配對欄位合併成一份。用 <code>ON</code> 時配對欄位會出現兩次。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+<li><code>NATURAL</code> 等同於對所有同名欄位做 <code>USING</code>。文件明言 NATURAL <strong>比 USING 風險高得多</strong>，因為新增一個同名欄位的綱要變更會無聲地改變連接行為。若兩表無同名欄位，NATURAL 的行為等同 CROSS JOIN。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+</ul></article><article id="A5"><h2>A5 — NULL 與三值邏輯<span class="badge">9 處引註</span></h2><p><strong>來源</strong>：S5, S6
+<strong>適用範圍</strong>：PostgreSQL 18 文件；SQL 標準行為</p>
+<h2>內容</h2>
+<ul>
+<li>一般比較運算子（<code>=</code>、<code>&lt;&gt;</code>、<code>&lt;</code> 等）在<strong>任一邊為 null 時回傳 null</strong>（意為 unknown），而非 true 或 false。<a class="cite" href="https://www.postgresql.org/docs/18/functions-comparison.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.2 Comparison Functions and Operators">S5</a></li>
+<li><code>SELECT 7 = NULL;</code> → null</li>
+<li><code>SELECT 7 &lt;&gt; NULL;</code> → null</li>
+<li>原因：NULL 代表未知值，兩個未知值無法被認定相等，所以比較不可能產生 true。<a class="cite" href="https://www.postgresql.org/docs/18/functions-comparison.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.2 Comparison Functions and Operators">S5</a></li>
+<li>因此 <code>expression = NULL</code> <strong>永遠不會配對到任何列</strong>。正確寫法是 <code>IS NULL</code> / <code>IS NOT NULL</code>。<a class="cite" href="https://www.postgresql.org/docs/18/functions-comparison.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.2 Comparison Functions and Operators">S5</a></li>
+<li>PostgreSQL 提供 <code>transform_null_equals</code> 設定，啟用後會把 <code>x = NULL</code> 改寫為 <code>x IS NULL</code>，但文件建議修正應用程式以符合 SQL 標準，而非依賴此設定。<a class="cite" href="https://www.postgresql.org/docs/18/functions-comparison.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.2 Comparison Functions and Operators">S5</a></li>
+</ul>
+<h2>IS DISTINCT FROM</h2>
+<ul>
+<li><code>IS DISTINCT FROM</code>：把 null 當成可比較的值。兩邊非 null 時行為同 <code>&lt;&gt;</code>；<strong>兩邊都是 null 回傳 false</strong>；<strong>恰好一邊是 null 回傳 true</strong>。<a class="cite" href="https://www.postgresql.org/docs/18/functions-comparison.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.2 Comparison Functions and Operators">S5</a></li>
+<li><code>IS NOT DISTINCT FROM</code>：兩邊非 null 時行為同 <code>=</code>；兩邊都 null 回傳 true；恰好一邊 null 回傳 false。<a class="cite" href="https://www.postgresql.org/docs/18/functions-comparison.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.2 Comparison Functions and Operators">S5</a></li>
+<li>文件說明這組述詞實際上是把 null 當作普通值而非「未知」來處理。<a class="cite" href="https://www.postgresql.org/docs/18/functions-comparison.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.2 Comparison Functions and Operators">S5</a></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>運算式</th>
+<th>結果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1 IS DISTINCT FROM NULL</code></td>
+<td>true</td>
+</tr>
+<tr>
+<td><code>NULL IS DISTINCT FROM NULL</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>1 IS NOT DISTINCT FROM NULL</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>NULL IS NOT DISTINCT FROM NULL</code></td>
+<td>true</td>
+</tr>
+</tbody>
+</table>
+<h2>布林測試</h2>
+<p><code>IS TRUE</code> / <code>IS NOT TRUE</code> / <code>IS FALSE</code> / <code>IS NOT FALSE</code> / <code>IS UNKNOWN</code> / <code>IS NOT UNKNOWN</code> <strong>一律回傳 true 或 false，永不回傳 null</strong>，即使運算元為 null。<a class="cite" href="https://www.postgresql.org/docs/18/functions-comparison.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.2 Comparison Functions and Operators">S5</a></p>
+<table>
+<thead>
+<tr>
+<th>運算式</th>
+<th>結果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NULL::boolean IS TRUE</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>NULL::boolean IS NOT TRUE</code></td>
+<td>true</td>
+</tr>
+<tr>
+<td><code>NULL::boolean IS UNKNOWN</code></td>
+<td>true</td>
+</tr>
+</tbody>
+</table>
+<h2>與 A3 的交互作用</h2>
+<p><code>WHERE</code> 會丟棄條件為 <strong>false 或 NULL</strong> 的列（見 A3 / <a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a>）。這代表 NULL 在 WHERE 中的效果等同於 false——這是 NULL 最常造成意外的地方。</p></article><article id="A6"><h2>A6 — 聚合與分組<span class="badge">15 處引註</span></h2><p><strong>來源</strong>：S6, S7, S15
+<strong>適用範圍</strong>：PostgreSQL 18 文件</p>
+<h2>分組與過濾</h2>
+<ul>
+<li><code>GROUP BY</code> 把通過 <code>WHERE</code> 的列分組，聚合函數在每一組上計算。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+<li><code>HAVING</code> 過濾<strong>組</strong>，一如 <code>WHERE</code> 過濾<strong>列</strong>。<code>HAVING</code> 可以參照分組運算式與聚合結果。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+<li>含聚合呼叫、或有 <code>HAVING</code> 而無 <code>GROUP BY</code> 的查詢，整個被視為<strong>一組</strong>，回傳一列（若被 HAVING 濾掉則零列）。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+<li>視窗函數在分組、聚合與 <code>HAVING</code> 之後求值。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></li>
+</ul>
+<h2>count(*) 與 count(expression) 的差異</h2>
+<ul>
+<li><strong><code>count(*)</code> 計算輸入列數，不論任何欄位值是否為 null。</strong><a class="cite" href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.21 Aggregate Functions">S15</a></li>
+<li><strong><code>count(expression)</code> 只計算該引數不為 null 的輸入列。</strong><a class="cite" href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.21 Aggregate Functions">S15</a></li>
+<li>兩者都回傳 <code>bigint</code>。<a class="cite" href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.21 Aggregate Functions">S15</a></li>
+<li>文件另註：對整張表做 <code>count(*)</code> 是昂貴的，PostgreSQL 必須掃描整張表，或掃描一個涵蓋其所有列的索引。<a class="cite" href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.21 Aggregate Functions">S15</a></li>
+</ul>
+<h2>聚合函數如何處理 NULL</h2>
+<ul>
+<li><strong>多數通用聚合函數忽略 null</strong>，其說明都寫明對「非 null 的輸入值」運算。這涵蓋 <code>any_value</code>、<code>avg</code>、<code>bit_and</code>、<code>bit_or</code>、<code>bit_xor</code>、<code>bool_and</code>、<code>bool_or</code>、<code>every</code>、<code>max</code>、<code>min</code>、<code>range_agg</code>、<code>string_agg</code>、<code>sum</code>、<code>xmlagg</code>。<a class="cite" href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.21 Aggregate Functions">S15</a></li>
+<li><strong>部分聚合函數包含 null</strong>：<code>array_agg</code>（非陣列輸入時）會收集 null，<code>json_agg</code> 也包含；<code>json_agg_strict</code> 與 <code>jsonb_agg_strict</code> 則跳過。<a class="cite" href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.21 Aggregate Functions">S15</a></li>
+<li><strong>假設集聚合</strong>（<code>rank</code>、<code>dense_rank</code>、<code>percent_rank</code>、<code>cume_dist</code>）明確不是 strict 的，不會丟棄含 null 的列。<a class="cite" href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.21 Aggregate Functions">S15</a></li>
+<li><strong>統計類聚合</strong>使用 <em>N</em> = 所有輸入運算式皆非 null 的列數；計算無意義時（例如 <em>N</em> 為 0）回傳 null。<a class="cite" href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.21 Aggregate Functions">S15</a></li>
+</ul>
+<h2>沒有任何列時回傳什麼</h2>
+<ul>
+<li><strong>除了 <code>count</code> 以外，這些函數在沒有選出任何列時回傳 null。</strong><a class="cite" href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.21 Aggregate Functions">S15</a></li>
+<li>文件特別指出 <code>array_agg</code> 回傳 null 而非空陣列。需要以 0 或空陣列代替時應使用 <code>coalesce</code>。<a class="cite" href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.21 Aggregate Functions">S15</a></li>
+<li><code>sum</code>、<code>avg</code>、<code>max</code>、<code>min</code> 在無輸入列時皆回傳 null。<a class="cite" href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.21 Aggregate Functions">S15</a></li>
+</ul>
+<blockquote class="warn">
+<p>⚠ 寫稿注意：文件<strong>未明述</strong>「所有輸入皆為 null」時的結果。由「忽略 null」可推論應為 null，但這是推論而非文件陳述，簡報中不可寫成文件的說法。</p>
+</blockquote></article><article id="B1"><h2>B1 — 表的實體儲存與掃描成本<span class="badge">10 處引註</span></h2><p><strong>來源</strong>：S2, S8, S17
+<strong>適用範圍</strong>：PostgreSQL 18（頁面結構與成本模型）、MySQL 8.0（無索引行為）</p>
+<h2>頁（page）是什麼</h2>
+<ul>
+<li>PostgreSQL 的<strong>表與索引都存成固定大小的頁陣列，一頁通常 8 kB</strong>。伺服器可編譯成不同頁大小，但一個安裝只支援一種。<a class="cite" href="https://www.postgresql.org/docs/18/storage-page-layout.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 65.6 Database Page Layout">S17</a></li>
+<li>一頁由五個部分組成，從頁首依序為：<a class="cite" href="https://www.postgresql.org/docs/18/storage-page-layout.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 65.6 Database Page Layout">S17</a>
+  1. <strong>PageHeaderData</strong>：24 位元組的一般資訊，含剩餘空間指標
+  2. <strong>ItemIdData（line pointer，行指標）</strong>：每筆 4 位元組，存放指向某個項目的 (偏移量, 長度) 對
+  3. <strong>剩餘空間</strong>：行指標從前方長入，項目從後方長入
+  4. <strong>Items（項目）</strong>：在表中，每個項目就是<strong>一列</strong>；項目從未配置空間的尾端往前配置
+  5. <strong>Special space</strong>：存取方法專屬資料，一般表為空</li>
+<li>行指標一旦配置就不會移動，即使項目本身為了壓實空間而被搬動。因此它的索引可作為長期參照。<strong><code>ItemPointer</code>（CTID）就是「頁碼 + 行指標索引」。</strong><a class="cite" href="https://www.postgresql.org/docs/18/storage-page-layout.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 65.6 Database Page Layout">S17</a></li>
+</ul>
+<h2>列（heap tuple）的結構</h2>
+<p>每一列的結構相同：<a class="cite" href="https://www.postgresql.org/docs/18/storage-page-layout.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 65.6 Database Page Layout">S17</a>
+- 固定大小標頭，多數機器上為 23 位元組
+- 選用的 <strong>null bitmap</strong>，只在 <code>t_infomask</code> 設有 <code>HEAP_HASNULL</code> 時存在，每欄一個位元（1 為非 null，0 為 null）；不存在時所有欄位視為非 null
+- 使用者資料，起始於 <code>t_hoff</code> 指定的偏移量</p>
+<blockquote class="warn">
+<p>⚠ 文件<strong>未說明</strong>一列是否可以跨頁，只說表中所有頁在邏輯上等價，任何列可存於任何頁。<a class="cite" href="https://www.postgresql.org/docs/18/storage-page-layout.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 65.6 Database Page Layout">S17</a>
+變動長度的值可能內嵌存放或存入 TOAST 表，也可能被壓縮；文件未在此頁描述門檻與機制。<a class="cite" href="https://www.postgresql.org/docs/18/storage-page-layout.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 65.6 Database Page Layout">S17</a></p>
+</blockquote>
+<h2>掃描成本模型</h2>
+<ul>
+<li>沒有索引時，MySQL 必須從第一列開始讀完整張表；成本隨表的大小成長。有索引時可直接定位到資料檔中的相關位置。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes">S8</a></li>
+<li>PostgreSQL 的成本模型<strong>以頁為單位計價</strong>。預設 <code>seq_page_cost = 1.0</code>，代表一次循序磁碟頁讀取；其他成本參數相對於它設定。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li>官方範例：表 <code>tenk1</code> 有 345 頁、10,000 列，全表掃描預估成本為
+  <code>(345 × seq_page_cost 1.0) + (10000 × cpu_tuple_cost 0.01) = 445</code>。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a>
+  → <strong>成本 = 讀頁成本 + 每列的 CPU 成本，且讀頁是主要項。</strong></li>
+</ul>
+<h2>索引不是永遠有利</h2>
+<p>MySQL 文件指出索引在以下情況較無用：表很小、或查詢需處理大表中絕大部分的列。此時循序讀取比索引走訪更快，且能把磁碟尋道次數降到最低，即使不是每一列都需要。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes">S8</a></p></article><article id="B2"><h2>B2 — B-tree 索引原理<span class="badge">12 處引註</span></h2><p><strong>來源</strong>：S12, S1, S8
+<strong>適用範圍</strong>：通用（PostgreSQL 18 / MySQL 8.0 皆以 B-tree 為預設）</p>
+<h2>為什麼需要樹</h2>
+<ul>
+<li>索引的<strong>葉節點（leaf node）在磁碟上並非按鍵值順序存放</strong>，所以光有葉節點無法快速定位。<a class="cite" href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener" title="Use The Index, Luke — The B-Tree">S12</a></li>
+<li>葉節點之間以<strong>雙向鏈結串列（doubly linked list）</strong>相連，記錄其邏輯順序。<a class="cite" href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener" title="Use The Index, Luke — The B-Tree">S12</a></li>
+<li>葉節點之上是<strong>分支節點（branch node）</strong>作為路標：每一筆分支項目記錄它所指向之葉節點中的<strong>最大鍵值</strong>。分支層層疊起，直到最上層只剩單一<strong>根節點（root node）</strong>。<a class="cite" href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener" title="Use The Index, Luke — The B-Tree">S12</a></li>
+</ul>
+<h2>為什麼樹很淺</h2>
+<ul>
+<li>每個節點容納大量項目，通常數百筆。樹深隨項目數呈<strong>對數成長</strong>，每增加一層，容量就乘上節點的分支因子（fan-out）。<a class="cite" href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener" title="Use The Index, Luke — The B-Tree">S12</a></li>
+<li>文章以每節點 4 筆為例：深度 3 容納 64 筆，每多一層就是四倍；深度 5 約 1,024 筆，深度 10 約一百萬筆。<a class="cite" href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener" title="Use The Index, Luke — The B-Tree">S12</a></li>
+<li>若每節點數百筆，每多一層約可支撐一百倍的資料量。<strong>實務上數百萬筆的索引，樹深通常只有四到五層。</strong><a class="cite" href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener" title="Use The Index, Luke — The B-Tree">S12</a></li>
+</ul>
+<h2>走訪成本</h2>
+<ul>
+<li>查找從根節點開始，依遞增順序掃描節點內的項目，找到第一個大於或等於搜尋鍵的值，沿該參照往下，重複直到葉節點。<a class="cite" href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener" title="Use The Index, Luke — The B-Tree">S12</a></li>
+<li>因為樹是平衡的，<strong>每次查找的步數都相同，等於樹深</strong>。<a class="cite" href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener" title="Use The Index, Luke — The B-Tree">S12</a></li>
+<li>樹深是項目數的對數（底數為每節點項目數），所以資料增加時查找成本成長得非常慢。<a class="cite" href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener" title="Use The Index, Luke — The B-Tree">S12</a></li>
+</ul>
+<h2>各引擎的預設</h2>
+<ul>
+<li>PostgreSQL 提供 B-tree、Hash、GiST、SP-GiST、GIN、BRIN，外加 <code>bloom</code> 擴充。<strong>B-tree 是預設</strong>，<code>CREATE INDEX</code> 不指定 <code>USING</code> 時建的就是 B-tree。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-types.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.2 Index Types">S1</a></li>
+<li>MySQL 的多數索引（<code>PRIMARY KEY</code>、<code>UNIQUE</code>、<code>INDEX</code>、<code>FULLTEXT</code>）<strong>以 B-tree 儲存</strong>。例外：空間資料型別用 R-tree，<code>MEMORY</code> 表另支援 hash 索引，InnoDB 的 <code>FULLTEXT</code> 用倒排串列。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes">S8</a></li>
+</ul>
+<h2>代價</h2>
+<p>資料庫在每次 insert、update、delete 時都自動維護這棵樹，這為寫入操作增加額外負擔。<a class="cite" href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener" title="Use The Index, Luke — The B-Tree">S12</a>（詳見 B6）</p></article><article id="B3"><h2>B3 — 複合索引與最左前綴<span class="badge">12 處引註</span></h2><p><strong>來源</strong>：S13, S8, S3, S11
+<strong>適用範圍</strong>：各引擎規則一致性高，但細節有差（見 D1）</p>
+<h2>排序方式</h2>
+<ul>
+<li>複合（concatenated）索引是<strong>跨多欄建的單一 B-tree</strong>。其項目先依第一欄排序；第二欄只在第一欄相同的列之間決定順序，後續欄位依此類推。<a class="cite" href="https://use-the-index-luke.com/sql/where-clause/the-equals-operator/concatenated-keys" target="_blank" rel="noopener" title="Use The Index, Luke — Concatenated Keys">S13</a></li>
+<li>因此<strong>欄位順序決定了哪些查詢能用這個索引</strong>。<a class="cite" href="https://use-the-index-luke.com/sql/where-clause/the-equals-operator/concatenated-keys" target="_blank" rel="noopener" title="Use The Index, Luke — Concatenated Keys">S13</a></li>
+</ul>
+<h2>最左前綴規則</h2>
+<ul>
+<li><strong>第一欄永遠可用於搜尋。其他欄位只有在它前面的欄位也被約束時才可用。</strong><a class="cite" href="https://use-the-index-luke.com/sql/where-clause/the-equals-operator/concatenated-keys" target="_blank" rel="noopener" title="Use The Index, Luke — Concatenated Keys">S13</a></li>
+<li>MySQL：最佳化器可使用複合索引的<strong>任何最左前綴</strong>。索引 <code>(col1, col2, col3)</code> 支援 <code>(col1)</code>、<code>(col1, col2)</code>、<code>(col1, col2, col3)</code> 三種查找。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes">S8</a></li>
+<li>PostgreSQL：B-tree 索引可搭配其任何欄位子集的條件使用，但<strong>在前導（最左）欄位被約束時最有效率</strong>。前導欄位上的等值約束，加上第一個沒有等值約束之欄位上的不等式約束，會被用來限制索引的掃描範圍；再右邊欄位的約束只在索引內檢查，能省去訪表，但不必然縮小必須掃描的索引範圍。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-multicolumn.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.3 Multicolumn Indexes">S3</a></li>
+</ul>
+<h2>哪些查詢用不到</h2>
+<ul>
+<li>只過濾非前導欄位的查詢：符合的列散落在整棵樹中，資料庫通常退回<strong>全表掃描</strong>。文章的例子是主鍵 <code>(employee_id, subsidiary_id)</code> 卻只用 <code>subsidiary_id</code> 查詢。<a class="cite" href="https://use-the-index-luke.com/sql/where-clause/the-equals-operator/concatenated-keys" target="_blank" rel="noopener" title="Use The Index, Luke — Concatenated Keys">S13</a></li>
+<li>類比：像一本先依姓、再依名排序的電話簿。只知道姓可以查，只知道名就幾乎無法查。<a class="cite" href="https://use-the-index-luke.com/sql/where-clause/the-equals-operator/concatenated-keys" target="_blank" rel="noopener" title="Use The Index, Luke — Concatenated Keys">S13</a></li>
+<li>把常被過濾的欄位放在前面（改成 <code>(subsidiary_id, employee_id)</code>），所有符合的列就會相鄰，資料庫可做<strong>索引範圍掃描（index range scan）</strong>。<a class="cite" href="https://use-the-index-luke.com/sql/where-clause/the-equals-operator/concatenated-keys" target="_blank" rel="noopener" title="Use The Index, Luke — Concatenated Keys">S13</a></li>
+</ul>
+<h2>SQLite 的精確規則</h2>
+<p>索引 <code>(a,b,c,...,z)</code>：<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a>
+- 前導欄位必須以 <code>=</code>、<code>IN</code> 或 <code>IS</code> 約束。
+- 最右側被使用的欄位可用不等式，最多兩個（夾出允許範圍）。
+- <strong>不允許有缺口</strong>。若 <code>c</code> 未被約束，<code>d</code>–<code>z</code> 上的條件都不能使用。
+- 不等式約束之欄位右側的欄位通常不可用（skip-scan 為例外）。</p>
+<p>官方範例（索引 <code>(a,b,c,d)</code>）：
+| WHERE 條件 | 可用欄位 |
+|---|---|
+| <code>a=5 AND b IN (1,2,3) AND c IS NULL AND d='hello'</code> | a, b, c, d 全部 |
+| <code>a=5 AND b IN (1,2,3) AND c&gt;12 AND d='hello'</code> | 只有 a, b, c（d 在不等式右側）|
+| <code>a=5 AND b IN (1,2,3) AND d='hello'</code> | 只有 a, b（c 是缺口）|
+| <code>b IN (1,2,3) AND c NOT NULL AND d='hello'</code> | 索引不可用（a 未約束）→ 全表掃描 |</p>
+<h2>設計建議</h2>
+<ul>
+<li>一個排序良好的複合索引通常優於兩個獨立索引，可節省儲存並減少寫入負擔。<a class="cite" href="https://use-the-index-luke.com/sql/where-clause/the-equals-operator/concatenated-keys" target="_blank" rel="noopener" title="Use The Index, Luke — Concatenated Keys">S13</a></li>
+<li>PostgreSQL 文件則偏保守：複合索引應<strong>節制使用</strong>；多數情況單欄索引就夠且更省空間與時間；<strong>超過三欄的索引除非表的使用方式極為固定，否則不太可能有幫助</strong>。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-multicolumn.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.3 Multicolumn Indexes">S3</a></li>
+<li>PostgreSQL 的複合索引最多 32 欄（含 <code>INCLUDE</code> 欄位）。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-multicolumn.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.3 Multicolumn Indexes">S3</a></li>
+</ul></article><article id="B4"><h2>B4 — 索引失效的典型情境<span class="badge">11 處引註</span></h2><p><strong>來源</strong>：S1, S14, S11, S8
+<strong>適用範圍</strong>：各引擎皆有，但條件細節不同（見 D1）</p>
+<h2>1. 前綴通配：<code>LIKE '%bar'</code></h2>
+<p><strong>PostgreSQL 18</strong>：B-tree 索引只有在模式是<strong>常數</strong>且<strong>錨定於字串開頭</strong>時才可用於 <code>LIKE</code> 與 <code>~</code>。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-types.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.2 Index Types">S1</a>
+- 可用：<code>col LIKE 'foo%'</code>、<code>col ~ '^foo'</code>
+- <strong>不可用：<code>col LIKE '%bar'</code></strong>
+- 地區設定但書：若資料庫未使用 C locale，索引必須以特殊的 operator class 建立才能支援模式比對查詢。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-types.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.2 Index Types">S1</a>
+- <code>ILIKE</code> 與 <code>~*</code> 只有在模式以<strong>非字母字元</strong>（不受大小寫轉換影響的字元）開頭時才能用索引。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-types.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.2 Index Types">S1</a></p>
+<p><strong>SQLite</strong> 的條件更細（LIKE/GLOB optimization 必須<strong>全部</strong>滿足）：<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a>
+1. 右側是字串常值（或綁定到字串常值的參數），且<strong>不以通配字元開頭</strong>
+2. 數值型的左運算元不得使 運算子為真。或者 (a) 左運算元是具 <strong>TEXT affinity</strong> 的索引欄位，或 (b) 模式不以 <code>-</code> 或數字開頭
+   - 文件給的理由：<code>9&lt;10</code> 但 <code>'9'&gt;'10'</code>——數字不按字典序排列
+3. 內建 LIKE/GLOB 函數未被 <code>sqlite3_create_function()</code> 覆寫
+4. GLOB：欄位須使用內建 <strong>BINARY</strong> collation
+5. LIKE：<code>case_sensitive_like</code> 為 ON 時欄位須用 BINARY，為 OFF（預設）時須用 <strong>NOCASE</strong>。只有這兩種組合可最佳化
+6. 若用 <code>ESCAPE</code>，跳脫字元須為 ASCII 或單位元組 UTF-8</p>
+<p><strong>機制</strong>：對非通配前綴 <em>x</em>，令 <em>y</em> 為同長度中最小的、比較大於 <em>x</em> 的字串（例：<code>'hello'</code> → <code>'hellp'</code>），SQLite 加入兩個虛擬條件 <code>column &gt;= x AND column &lt; y</code>。原本的 LIKE 通常仍逐列檢查；只有在模式恰為 <code>column LIKE x%</code>（單一尾端通配）時才會省略。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></p>
+<h2>2. 函數包裹欄位：<code>WHERE UPPER(col) = ...</code></h2>
+<ul>
+<li>對索引欄位套用函數會使資料庫無法使用該欄位上的<strong>普通索引</strong>。<a class="cite" href="https://use-the-index-luke.com/sql/where-clause/functions" target="_blank" rel="noopener" title="Use The Index, Luke — Functions (index 失效)">S14</a></li>
+<li>例：<code>LAST_NAME</code> 上的索引，只在搜尋時大小寫與儲存值一致才有用；為了大小寫不敏感而用 <code>UPPER</code> / <code>LOWER</code> 包住欄位，就是問題所在。<a class="cite" href="https://use-the-index-luke.com/sql/where-clause/functions" target="_blank" rel="noopener" title="Use The Index, Luke — Functions (index 失效)">S14</a></li>
+<li><strong>補救方式</strong>：<a class="cite" href="https://use-the-index-luke.com/sql/where-clause/functions" target="_blank" rel="noopener" title="Use The Index, Luke — Functions (index 失效)">S14</a></li>
+<li><strong>函數式 / 運算式索引</strong>：PostgreSQL（7.4 起）、Oracle（8i 起）、Db2 LUW（10.5 起，不允許使用者自訂函數）</li>
+<li><strong>計算欄位 / 生成欄位</strong>：SQL Server 2000 起支援索引化計算欄位；MySQL 5.7 起支援生成欄位上的索引</li>
+<li>以上皆不可得時：新增一個實體欄位存放函數結果，用觸發器或應用程式維護，對它建索引，並把 <code>WHERE</code> 改寫成針對該欄位、不含運算式</li>
+</ul>
+<blockquote class="warn">
+<p>⚠ 寫稿注意：S14 的頁面<strong>未說明</strong>資料庫在索引失效後改用什麼計畫（是否為全表掃描），也<strong>未提供</strong>日期函數的例子。不可憑推測補上。</p>
+</blockquote>
+<h2>3. 型別不一致</h2>
+<p>MySQL：連接欄位的型別與大小相同時索引效率最好；<strong>比較不同型別（例如字串欄位對數值）可能導致索引無法使用</strong>。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes">S8</a></p>
+<h2>4. 前導欄位未約束</h2>
+<p>見 B3。SQLite 範例 <code>WHERE b IN (1,2,3) AND c NOT NULL AND d='hello'</code>（索引 <code>(a,b,c,d)</code>）→ a 未約束，索引不可用，全表掃描。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></p>
+<h2>5. SQLite 的 unary <code>+</code></h2>
+<p><code>+x=5</code> 中的一元 <code>+</code> 會使該條件無法約束索引。文件警告這是最後手段的繞道方式，且會移除 affinity，可能改變比較語意。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></p></article><article id="B5"><h2>B5 — 覆蓋索引與 index-only scan<span class="badge">13 處引註</span></h2><p><strong>來源</strong>：S4, S8, S10
+<strong>適用範圍</strong>：PostgreSQL 18 機制說明；MySQL 8.0 對應概念</p>
+<h2>定義</h2>
+<p><strong>index-only scan</strong> 只用索引項目回答查詢，不回表（heap）取對應的資料列。一般索引掃描必須同時讀索引與 heap，而 heap 的讀取往往是分散的，所以省掉它能大幅節省 I/O。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></p>
+<h2>必要條件</h2>
+<ol>
+<li><strong>索引型別須支援</strong>。B-tree 永遠支援；GiST 與 SP-GiST 僅部分 operator class 支援；其他型別（含 GIN）不支援。索引必須儲存或能重建每筆項目的原始值——GIN 項目通常只存部分值，故不合格。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></li>
+<li><strong>查詢只能參照索引中儲存的欄位</strong>。以表上有 x, y, z、索引建在 <code>(x, y)</code> 為例：<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a>
+   <code>sql
+   SELECT x, y FROM tab WHERE x = 'key';         -- 可用
+   SELECT x    FROM tab WHERE x = 'key' AND y &lt; 42;  -- 可用
+   SELECT x, z FROM tab WHERE x = 'key';         -- 不可用
+   SELECT x    FROM tab WHERE x = 'key' AND z &lt; 42;  -- 不可用</code></li>
+</ol>
+<h2>為什麼還是常常要回表（PostgreSQL 特有）</h2>
+<ul>
+<li>MVCC 下的<strong>列可見性只記錄在 heap tuple 中，不在索引項目裡</strong>。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></li>
+<li>每個表頁在<strong>可見性映射（visibility map）</strong>中有一個位元，當該頁上所有列對所有現在與未來的交易都可見時被設定。掃描時對每筆候選索引項目檢查對應 heap 頁的該位元：<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></li>
+<li><strong>位元已設</strong>：該列確定可見，直接回傳索引中的值</li>
+<li><strong>位元未設</strong>：必須讀 heap tuple 檢查可見性，相對一般索引掃描<strong>沒有節省</strong></li>
+<li>可見性映射比它所描述的 heap 小約四個數量級，通常快取在記憶體中。因此 index-only scan 只有在表中相當大比例的頁都是 all-visible 時才划算——這對<strong>大致靜態的資料</strong>很常見。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></li>
+</ul>
+<h2>INCLUDE 覆蓋索引</h2>
+<pre><code class="language-sql">CREATE INDEX tab_x_y ON tab (x) INCLUDE (y);
+</code></pre>
+<ul>
+<li><code>y</code> 存在索引中但<strong>不屬於搜尋鍵</strong>，不被索引機制解讀，因此不需要是索引能處理的型別。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></li>
+<li>唯一性只約束鍵欄位：<code>CREATE UNIQUE INDEX tab_x_y ON tab (x) INCLUDE (y);</code> 僅對 <code>x</code> 唯一。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></li>
+<li><strong>代價</strong>：payload 欄位重複表中資料、使索引變大，可能拖慢搜尋；過寬的欄位可能使 tuple 超過索引最大尺寸導致 insert 失敗。只有在表變動夠慢、index-only scan 真能避開回表時才有幫助。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></li>
+<li>限制：運算式不能作為 included 欄位；只有 B-tree、GiST、SP-GiST 支援 <code>INCLUDE</code>。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></li>
+<li><code>INCLUDE</code> 出現之前的做法是把 <code>y</code> 當成尾端鍵欄位 <code>CREATE INDEX tab_x_y ON tab (x, y);</code>。查找可行，但無法只對 <code>x</code> 強制唯一。非鍵欄位也不會進入 B-tree 上層，使上層 tuple 保持精簡。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></li>
+</ul>
+<h2>MySQL 的對應說法</h2>
+<p>查詢只需要索引中包含的欄位時，值直接從索引樹讀出，不查資料列——這就是覆蓋索引。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes">S8</a>
+在 <code>EXPLAIN</code> 的 <code>Extra</code> 欄位顯示為 <strong>Using index</strong>。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></p></article><article id="B6"><h2>B6 — 索引的代價<span class="badge">5 處引註</span></h2><p><strong>來源</strong>：S9, S12, S4
+<strong>適用範圍</strong>：通用</p>
+<h2>三項成本</h2>
+<p>MySQL 文件列出三點：<a class="cite" href="https://docs.oracle.com/cd/E17952_01/mysql-8.0-en/optimization-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3 Optimization and Indexes">S9</a>
+- <strong>浪費空間</strong>：每個索引都佔儲存空間，即使沒有任何查詢用到它。
+- <strong>浪費最佳化器時間</strong>：MySQL 必須評估可用的索引來決定用哪一個，多餘的索引增加規劃開銷。
+- <strong>拖慢寫入</strong>：insert、update、delete 都必須同時更新受影響表上的<strong>每一個</strong>索引。</p>
+<p>Use The Index, Luke 的對應說法：資料庫在每次 insert、update、delete 時自動維護 B-tree，這為寫入操作增加負擔。<a class="cite" href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener" title="Use The Index, Luke — The B-Tree">S12</a></p>
+<h2>結論</h2>
+<ul>
+<li>必須在這些成本與查詢速度之間取得平衡。在 <code>WHERE</code> 子句用到的欄位上建索引能加快 <code>SELECT</code>，但<strong>為每一個可能的欄位都建索引會適得其反</strong>。目標是最佳的索引集合：足以讓重要查詢變快，而不必為效益低又拖慢寫入的索引付出代價。<a class="cite" href="https://docs.oracle.com/cd/E17952_01/mysql-8.0-en/optimization-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3 Optimization and Indexes">S9</a></li>
+<li>MySQL 文件<strong>未量化</strong>這些成本，也未給出選擇索引的規則。<a class="cite" href="https://docs.oracle.com/cd/E17952_01/mysql-8.0-en/optimization-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3 Optimization and Indexes">S9</a></li>
+<li>覆蓋索引的 payload 欄位會重複表中資料、使索引變大，可能拖慢搜尋。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></li>
+</ul>
+<blockquote class="warn">
+<p>⚠ 寫稿注意：不可寫出「索引會讓寫入慢 N 倍」這類具體數字，來源未提供任何量化。</p>
+</blockquote></article><article id="C1"><h2>C1 — 執行計畫與最佳化器<span class="badge">10 處引註</span></h2><p><strong>來源</strong>：S2, S11
+<strong>適用範圍</strong>：PostgreSQL 18、SQLite</p>
+<h2>最佳化器在做什麼</h2>
+<ul>
+<li>PostgreSQL 為收到的每個查詢設計一個<strong>查詢計畫（query plan）</strong>，並選擇預估成本最低者。<code>EXPLAIN</code> 顯示該計畫而不執行查詢。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li>SQLite：給定單一 SQL 陳述式，可能有數十、數百甚至數千種實作方式。規劃器的任務是選出磁碟 I/O 與 CPU 開銷最小的那一個。它是成本基礎的，估算各競爭計畫的成本並選預期最快者。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+<li>當有多個索引是候選時，SQLite「估算使用每個選項完成查詢所需的總工作量」，選工作量估計最小者。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+</ul>
+<h2>計畫的結構</h2>
+<p>計畫是一棵<strong>計畫節點（plan node）樹</strong>：<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a>
+- <strong>掃描節點（scan node）</strong>位於底部，從表（或 <code>VALUES</code>、FROM 中的集合回傳函數等非表來源）回傳原始列。
+- <strong>上層節點</strong>對這些列執行連接、聚合、排序等工作。
+- 輸出每個節點一行，以縮排表示樹狀結構。
+- <strong>第一行</strong>（最上層節點）給出整個計畫的預估總成本，這就是規劃器試圖最小化的數字。</p>
+<h2>成本數字怎麼讀</h2>
+<p>每個節點行的形式為 <code>(cost=startup..total rows=N width=W)</code>：<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></p>
+<table>
+<thead>
+<tr>
+<th>欄位</th>
+<th>意義</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>startup cost</strong></td>
+<td>該節點能開始輸出之前的時間，例如 <code>Sort</code> 節點的排序時間</td>
+</tr>
+<tr>
+<td><strong>total cost</strong></td>
+<td>該節點執行到完成的預估成本。父節點可能提早停止讀取，例如在 <code>LIMIT</code> 之下</td>
+</tr>
+<tr>
+<td><strong>rows</strong></td>
+<td>該節點<strong>輸出</strong>的預估列數，不是它掃描的列數</td>
+</tr>
+<tr>
+<td><strong>width</strong></td>
+<td>預估的平均列寬，單位為位元組</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>單位</strong>：成本是由規劃器成本參數設定的任意單位。慣例上 <code>seq_page_cost = 1.0</code>（一次循序磁碟頁讀取），其他參數相對於它。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li><strong>累計</strong>：上層節點的成本<strong>包含</strong>其子節點的成本。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li><strong>不計入</strong>：成本忽略傳送給用戶端與值轉文字的開銷，因為規劃器無法改變它們。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+</ul>
+<h2>SQLite 的規劃細節</h2>
+<ul>
+<li>連接順序以「多項式時間的圖演算法」決定（詳見 Next Generation Query Planner 文件），因此 50 或 60 路的連接也能在微秒內規劃完成。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+<li><code>ANALYZE</code> 提供統計資訊（<code>sqlite_stat*</code> 表）。沒有統計時 SQLite 用猜測值，例如：最左索引值平均 10 筆重複、自動索引計價時 N = 一百萬列。文件建議用 <code>PRAGMA optimize</code> 保持統計最新。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+</ul></article><article id="C2"><h2>C2 — JOIN 演算法<span class="badge">13 處引註</span></h2><p><strong>來源</strong>：S16, S11, S10, S2
+<strong>適用範圍</strong>：PostgreSQL 18 為主；各引擎支援度不同（見 D1）</p>
+<h2>PostgreSQL 的三種連接策略</h2>
+<p><strong>1. Nested loop join（巢狀迴圈連接）</strong><a class="cite" href="https://www.postgresql.org/docs/18/planner-optimizer.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 52.5 Planner/Optimizer">S16</a>
+- 對左側關聯的<strong>每一列</strong>，把右側關聯掃過一次。
+- 文件評價：容易實作，但<strong>可能非常慢</strong>。
+- 何時是好選擇：<strong>右側關聯可用索引掃描存取時</strong>——因為目前這一列左側的值可以直接當作索引鍵。</p>
+<p><strong>2. Merge join（合併連接）</strong><a class="cite" href="https://www.postgresql.org/docs/18/planner-optimizer.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 52.5 Planner/Optimizer">S16</a>
+- 兩個關聯都先<strong>依連接屬性排序</strong>，然後平行掃描並合併相符的列。
+- 文件評價：吸引人之處在於<strong>每個關聯只掃描一次</strong>。
+- 排序可以是明確的排序步驟，也可以來自用連接鍵上的索引以正確順序掃描關聯。</p>
+<p><strong>3. Hash join（雜湊連接）</strong><a class="cite" href="https://www.postgresql.org/docs/18/planner-optimizer.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 52.5 Planner/Optimizer">S16</a>
+- 先掃描右側關聯，以其連接屬性為鍵<strong>載入雜湊表</strong>。
+- 再掃描左側關聯，用每一列的連接值去<strong>探測（probe）</strong>雜湊表尋找相符項。</p>
+<blockquote class="warn">
+<p>⚠ 文件<strong>未給出</strong>何時 hash join 或 merge join 優於其他策略的明確指引。唯二明述的優勢是 nested loop 的索引情境與 merge join 的單次掃描。<a class="cite" href="https://www.postgresql.org/docs/18/planner-optimizer.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 52.5 Planner/Optimizer">S16</a></p>
+</blockquote>
+<h2>連接順序的搜尋</h2>
+<ul>
+<li>超過兩個關聯的查詢，結果建成<strong>二元連接步驟的樹</strong>，規劃器評估不同的連接序列找出最便宜者。<a class="cite" href="https://www.postgresql.org/docs/18/planner-optimizer.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 52.5 Planner/Optimizer">S16</a></li>
+<li>關聯數少於 <code>geqo_threshold</code> 時，規劃器進行<strong>近乎窮舉</strong>的搜尋。<a class="cite" href="https://www.postgresql.org/docs/18/planner-optimizer.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 52.5 Planner/Optimizer">S16</a></li>
+<li>它偏好連接那些在 <code>WHERE</code> 條件中有連接子句的關聯對；沒有連接子句的配對只在某個關聯別無選擇時才考慮。<a class="cite" href="https://www.postgresql.org/docs/18/planner-optimizer.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 52.5 Planner/Optimizer">S16</a></li>
+<li>超過 <code>geqo_threshold</code> 時改用啟發式方法，即<strong>基因查詢最佳化器（GEQO）</strong>。原因是窮舉在連接數多時會耗費過多時間與記憶體。<a class="cite" href="https://www.postgresql.org/docs/18/planner-optimizer.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 52.5 Planner/Optimizer">S16</a></li>
+<li>搜尋在輕量的「路徑（path）」上進行，找到最便宜的路徑後才建出完整計畫樹交給執行器。<a class="cite" href="https://www.postgresql.org/docs/18/planner-optimizer.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 52.5 Planner/Optimizer">S16</a></li>
+</ul>
+<h2>其他引擎</h2>
+<ul>
+<li><strong>SQLite 把所有連接都實作為巢狀迴圈</strong>，沒有 hash join 或 merge join。預設最左的 FROM 表為外層迴圈，規劃器可重排迴圈以取得更好的索引；內連接可自由重排，外連接不可（不具交換律與結合律），<code>CROSS JOIN</code> 永不重排。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+<li>官方範例顯示同一查詢的兩種巢狀順序在特定資料分布下差異可達<strong>約 2000 倍</strong>。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+<li><strong>MySQL</strong>：<code>EXPLAIN</code> 的 <code>Extra</code> 顯示 <strong>Using join buffer</strong> 時，代表使用了 Block Nested Loop、Batched Key Access 或 hash join。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></li>
+<li><strong>PostgreSQL 的判讀陷阱</strong>：merge join 在外層鍵重複時會重掃內層列，<code>EXPLAIN ANALYZE</code> 把這些重複計為額外的列，可能使內層子節點回報的列數膨脹。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+</ul>
+<h2>教學重點</h2>
+<p>同一個 JOIN，資料庫有三種完全不同的執行方式，成本差異可以是數量級的。而<strong>選哪一種由最佳化器根據統計估計決定</strong>，不是由你寫的 SQL 決定——這回扣 A2 的宣告式特性。</p></article><article id="C3"><h2>C3 — 統計資訊與基數估計<span class="badge">7 處引註</span></h2><p><strong>來源</strong>：S2, S11, S10
+<strong>適用範圍</strong>：三引擎皆有對應機制</p>
+<h2>估計從哪來</h2>
+<ul>
+<li>PostgreSQL：列數估計來自 <code>ANALYZE</code> 的<strong>隨機取樣</strong>，因此會在不同次執行之間變動，也會在重新 analyze 後改變。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li>SQLite：<code>ANALYZE</code> 產生 <code>sqlite_stat*</code> 表。<strong>沒有統計時 SQLite 用猜測值</strong>，例如假設最左索引值平均有 10 筆重複，自動索引計價時假設 N = 一百萬列。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+<li>MySQL：<code>EXPLAIN</code> 的 <code>rows</code> 是最佳化器預期檢查的列數；對 InnoDB 而言這是估計值。<code>filtered</code> 是這些列中通過該表條件後剩餘的百分比估計，<code>rows × filtered</code> 約等於傳給連接中下一張表的列數。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></li>
+</ul>
+<h2>估錯的後果與診斷</h2>
+<ul>
+<li>PostgreSQL：成本是平台相依的，且<strong>不隨表大小線性變化</strong>。玩具表上的結果不可外推到正式環境規模——規劃器在不同規模下可能選出不同的計畫。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li>判讀重點是<strong>預估列數與實際列數是否接近</strong>。文件指出實務上完全吻合是不尋常的。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li>MySQL：檢視計畫時應確認 <code>rows</code> 的乘積是否與真實列數相符。若差距很大，最佳化器的統計可能已過時，執行 <code>ANALYZE TABLE</code> 可能有幫助。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></li>
+<li>SQLite：文件建議用 <code>PRAGMA optimize</code> 保持統計最新。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></li>
+</ul>
+<h2>教學重點</h2>
+<p>最佳化器不是根據真實資料做決定，而是根據<strong>取樣得來的統計估計</strong>。統計過時 → 估計失準 → 選錯計畫。這是「查詢昨天很快今天很慢」的常見成因。</p></article><article id="C4"><h2>C4 — 怎麼讀執行計畫<span class="badge">26 處引註</span></h2><p><strong>來源</strong>：S2, S10, S11
+<strong>適用範圍</strong>：三引擎輸出格式完全不同（見 D2）</p>
+<h2>PostgreSQL：EXPLAIN 與 EXPLAIN ANALYZE</h2>
+<ul>
+<li><code>EXPLAIN</code> 只顯示規劃器的<strong>估計值</strong>，查詢不會被執行。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li><code>EXPLAIN ANALYZE</code> <strong>實際執行查詢</strong>，在估計值旁加上每個節點的實際列數與執行時間，例如 <code>(actual time=0.017..0.051 rows=10.00 loops=1)</code>。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li>實際時間單位是<strong>毫秒</strong>；成本是任意單位，兩者不可直接比較。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li>節點執行多次（<code>loops &gt; 1</code>）時，<code>actual</code> 的時間與列數是<strong>每次執行的平均值</strong>，乘上 <code>loops</code> 才是總量。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li>因為查詢真的被執行，副作用會發生。要分析 DML 應包在 <code>BEGIN; ... ROLLBACK;</code> 中。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li><code>ANALYZE</code> 會隱含啟用 <code>BUFFERS</code>。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+</ul>
+<h3>三種掃描節點</h3>
+<table>
+<thead>
+<tr>
+<th>節點</th>
+<th>行為</th>
+<th>何時被選中</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Seq Scan</strong></td>
+<td>依實體順序讀過表的每一列，條件以 <code>Filter:</code> 套用</td>
+<td>需要表中很大一部分時 <a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></td>
+</tr>
+<tr>
+<td><strong>Index Scan</strong></td>
+<td>走訪索引，依索引順序逐筆取出對應的表列。每次取用都是隨機存取，每列成本高</td>
+<td>回傳極少列，或 <code>ORDER BY</code> 與索引順序相符時 <a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></td>
+</tr>
+<tr>
+<td><strong>Bitmap Heap Scan</strong></td>
+<td>兩段式，通常位於 <code>Bitmap Index Scan</code> 之上。後者從索引收集符合列的位置成為 bitmap，前者把這些位置<strong>排成實體順序</strong>再取列，藉此避開大部分隨機存取成本，並以 <code>Recheck Cond:</code> 重新檢查條件</td>
+<td>中等選擇性：多於少數幾列但遠少於整張表時 <a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></td>
+</tr>
+</tbody>
+</table>
+<p>官方範例：<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></p>
+<pre><code>EXPLAIN SELECT * FROM tenk1 WHERE unique1 = 42;
+ Index Scan using tenk1_unique1 on tenk1  (cost=0.29..8.30 rows=1 width=244)
+   Index Cond: (unique1 = 42)
+
+EXPLAIN SELECT * FROM tenk1 WHERE unique1 &lt; 100;
+ Bitmap Heap Scan on tenk1  (cost=5.06..224.98 rows=100 width=244)
+   Recheck Cond: (unique1 &lt; 100)
+   -&gt;  Bitmap Index Scan on tenk1_unique1  (cost=0.00..5.04 rows=100 width=0)
+         Index Cond: (unique1 &lt; 100)
+</code></pre>
+<h3>判讀的注意事項</h3>
+<ul>
+<li>計時儀器本身有開銷，在 <code>gettimeofday()</code> 較慢的系統上可能很顯著，可用 <code>pg_test_timing</code> 測量。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li>網路傳輸<strong>不計入</strong>；輸出轉換除非指定 <code>SERIALIZE</code> 選項否則也不計入。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li><code>LIMIT</code> 可能讓節點提早停止，估計值仍顯示完整執行的數字，所以實際列數與時間可能低於估計值——<strong>這不是估計錯誤</strong>。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+<li><code>BitmapAnd</code> 與 <code>BitmapOr</code> 因實作限制，實際列數一律回報為 0。<a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></li>
+</ul>
+<h2>MySQL：EXPLAIN 輸出欄位</h2>
+<table>
+<thead>
+<tr>
+<th>欄位</th>
+<th>意義</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>查詢中 SELECT 的序號</td>
+</tr>
+<tr>
+<td><code>select_type</code></td>
+<td>SELECT 的種類（SIMPLE、PRIMARY、UNION、SUBQUERY、DERIVED、MATERIALIZED 等）</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>存取方法，見下</td>
+</tr>
+<tr>
+<td><code>possible_keys</code></td>
+<td>最佳化器可能考慮的索引；NULL 表示無相關索引</td>
+</tr>
+<tr>
+<td><code>key</code></td>
+<td>實際選用的索引；NULL 表示未使用索引</td>
+</tr>
+<tr>
+<td><code>key_len</code></td>
+<td>使用的鍵部分長度（位元組），可看出<strong>複合索引用到了多少欄</strong></td>
+</tr>
+<tr>
+<td><code>rows</code></td>
+<td>預期檢查的列數估計</td>
+</tr>
+<tr>
+<td><code>filtered</code></td>
+<td>通過條件後剩餘的百分比估計</td>
+</tr>
+<tr>
+<td><code>Extra</code></td>
+<td>額外細節</td>
+</tr>
+<tr>
+<td><a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3><code>type</code> 由好到壞</h3>
+<p><code>system</code> → <code>const</code> → <code>eq_ref</code> → <code>ref</code> → <code>fulltext</code> → <code>ref_or_null</code> → <code>index_merge</code> → <code>unique_subquery</code> → <code>index_subquery</code> → <code>range</code> → <code>index</code> → <code>ALL</code>。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a>
+- <code>const</code>：最多一列符合，查詢開始時讀一次，通常是對 PRIMARY KEY 或 UNIQUE 索引全部欄位用常數查找。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a>
+- <code>eq_ref</code>：對先前表的每組列回傳一列，PRIMARY KEY 或 UNIQUE NOT NULL 索引的所有部分都以 <code>=</code> 比對。除 <code>system</code> 與 <code>const</code> 外最好的連接型別。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a>
+- <code>range</code>：以 <code>=</code>、<code>&lt;&gt;</code>、<code>&gt;</code>、<code>BETWEEN</code>、<code>IN</code>、<code>LIKE</code>、<code>IS NULL</code> 等運算子做索引範圍掃描。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a>
+- <code>index</code>：掃描整棵索引樹。若索引覆蓋查詢，這是 index-only scan，通常比 <code>ALL</code> 快；否則依索引順序讀取資料列。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a>
+- <code>ALL</code>：全表掃描。通常是最差的型別。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></p>
+<h3>常見 <code>Extra</code> 值</h3>
+<ul>
+<li><strong>Using index</strong>：完全由索引回答，不讀表列（覆蓋索引），一般是好事。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></li>
+<li><strong>Using where</strong>：讀出列後再套用 WHERE 條件過濾。<strong>若 <code>type</code> 是 <code>ALL</code> 或 <code>index</code> 而這個值沒出現，查詢可能讀了遠超過必要的列數。</strong><a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></li>
+<li><strong>Using filesort</strong>：沒有索引能提供所需順序，需額外一輪排序。大結果集時值得設法減少。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></li>
+<li><strong>Using temporary</strong>：需要暫存表存放中間結果，常見於 GROUP BY 與 ORDER BY 列出的欄位不同時。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></li>
+</ul>
+<h2>SQLite</h2>
+<p>前綴 <code>EXPLAIN QUERY PLAN</code> 可得到「所選查詢策略的高階概觀」。開發者用它確認是否使用了 OR 子句最佳化、索引或全表掃描。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></p></article><article id="C5"><h2>C5 — 常見反模式<span class="badge">9 處引註</span></h2><p><strong>來源</strong>：S1, S4, S5, S6, S8, S9, S10, S11, S14
+<strong>適用範圍</strong>：通用</p>
+<h2>1. 在 LEFT JOIN 之後用 WHERE 過濾右表</h2>
+<p>把條件放在 <code>WHERE</code>（連接之後）而非 <code>ON</code>（連接之前），會把未配對的列連同 NULL 一起濾掉，使外連接退化為內連接。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></p>
+<pre><code class="language-sql">-- 保留未配對列（3 列）
+SELECT * FROM t1 LEFT JOIN t2 ON t1.num = t2.num AND t2.value = 'xxx';
+-- 濾掉未配對列（1 列）
+SELECT * FROM t1 LEFT JOIN t2 ON t1.num = t2.num WHERE t2.value = 'xxx';
+</code></pre>
+<p>內連接時兩者等價，外連接時不等價。<a class="cite" href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 7.2 Table Expressions">S6</a></p>
+<h2>2. 用 <code>= NULL</code> 檢查空值</h2>
+<p><code>expression = NULL</code> 永遠回傳 null，不會配對到任何列。必須用 <code>IS NULL</code>。<a class="cite" href="https://www.postgresql.org/docs/18/functions-comparison.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 9.2 Comparison Functions and Operators">S5</a></p>
+<h2>3. 比較不同型別的欄位</h2>
+<p>MySQL：比較不同型別（例如字串欄位對數值欄位）<strong>可能導致索引無法使用</strong>。連接欄位宣告為相同型別與大小時索引效率最好，非二進位字串欄位還需使用相同字元集。<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes">S8</a></p>
+<h2>4. 用函數包住被索引的欄位</h2>
+<p>見 B4。<code>WHERE UPPER(col) = 'X'</code> 使欄位上的普通索引無法使用。<a class="cite" href="https://use-the-index-luke.com/sql/where-clause/functions" target="_blank" rel="noopener" title="Use The Index, Luke — Functions (index 失效)">S14</a></p>
+<h2>5. 前綴通配的 LIKE</h2>
+<p>見 B4。<code>col LIKE '%bar'</code> 無法使用 B-tree 索引。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-types.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.2 Index Types">S1</a></p>
+<h2>6. <code>SELECT *</code> 使覆蓋索引失效</h2>
+<p>index-only scan 要求<strong>查詢只參照索引中儲存的欄位</strong>。<code>SELECT x, z</code> 在索引只含 <code>(x, y)</code> 時無法使用 index-only scan。<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a>
+→ 因此 <code>SELECT *</code> 幾乎必然要回表。</p>
+<h2>7. 盲目加索引</h2>
+<p>見 B6。多餘索引浪費空間、增加最佳化器負擔、拖慢所有寫入。<a class="cite" href="https://docs.oracle.com/cd/E17952_01/mysql-8.0-en/optimization-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3 Optimization and Indexes">S9</a></p>
+<h2>8. SQLite：OR 條件未必能用多索引</h2>
+<p>只有在 (1) 無法改寫成 <code>IN</code>，且 (2) <strong>每一個</strong> OR 子項都可各自索引化時，SQLite 才會考慮多索引聯集。即使適用，規劃器也可能因 OR 項過多或索引選擇性差而改選全表掃描。<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></p></article><article id="D1"><h2>D1 — 三引擎的索引行為差異<span class="badge">18 處引註</span></h2><p><strong>來源</strong>：S1, S2, S3, S4, S8, S10, S11
+<strong>⚠ 版本相依條目：任何引用本條目的陳述，都必須標明引擎與版本。</strong></p>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>PostgreSQL 18</th>
+<th>MySQL 8.0</th>
+<th>SQLite</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>預設索引型別</td>
+<td>B-tree（<code>CREATE INDEX</code> 未指定 <code>USING</code> 時）<a class="cite" href="https://www.postgresql.org/docs/18/indexes-types.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.2 Index Types">S1</a></td>
+<td>多數索引以 B-tree 儲存 <a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes">S8</a></td>
+<td>（本次來源未明述；S11 討論的是規劃器而非索引型別）</td>
+</tr>
+<tr>
+<td>其他索引型別</td>
+<td>Hash、GiST、SP-GiST、GIN、BRIN，加 <code>bloom</code> 擴充 <a class="cite" href="https://www.postgresql.org/docs/18/indexes-types.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.2 Index Types">S1</a></td>
+<td>空間型別用 R-tree；MEMORY 表支援 hash；InnoDB 的 FULLTEXT 用倒排串列 <a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes">S8</a></td>
+<td>未涵蓋</td>
+</tr>
+<tr>
+<td>複合索引上限</td>
+<td>32 欄（含 <code>INCLUDE</code>）<a class="cite" href="https://www.postgresql.org/docs/18/indexes-multicolumn.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.3 Multicolumn Indexes">S3</a></td>
+<td>本次來源未提供</td>
+<td>本次來源未提供</td>
+</tr>
+<tr>
+<td>複合索引官方態度</td>
+<td><strong>節制使用</strong>；多數情況單欄索引足夠；超過三欄除非使用方式極固定否則不太可能有幫助 <a class="cite" href="https://www.postgresql.org/docs/18/indexes-multicolumn.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.3 Multicolumn Indexes">S3</a></td>
+<td>建議建立少量串接索引而非大量單欄索引 [S8 相關章節]</td>
+<td>規則以「前綴不可有缺口」陳述 <a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></td>
+</tr>
+<tr>
+<td>前導欄位未約束時</td>
+<td>可能使用 <strong>skip scan</strong>（為前導欄位的每個可能值動態產生等值條件），但通常只在前導欄位相異值很少時才選用；相異值多時規劃器通常改選全表掃描 <a class="cite" href="https://www.postgresql.org/docs/18/indexes-multicolumn.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.3 Multicolumn Indexes">S3</a></td>
+<td>僅支援最左前綴查找 <a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes">S8</a></td>
+<td>不允許缺口；a 未約束則索引不可用（skip-scan 為例外）<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></td>
+</tr>
+<tr>
+<td>LIKE 可用索引的條件</td>
+<td>模式須為常數且錨定開頭；非 C locale 須用特殊 operator class <a class="cite" href="https://www.postgresql.org/docs/18/indexes-types.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.2 Index Types">S1</a></td>
+<td>本次來源未提供精確條件</td>
+<td>六項條件全部滿足才可（含 collation、affinity、是否覆寫函數）<a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></td>
+</tr>
+<tr>
+<td>連接演算法</td>
+<td>文件提及 merge join、nested loop <a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></td>
+<td>Block Nested Loop / BKA / hash join（由 Extra 得知）<a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></td>
+<td><strong>只用 nested loop</strong><a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></td>
+</tr>
+<tr>
+<td>覆蓋索引語法</td>
+<td><code>INCLUDE</code>（僅 B-tree、GiST、SP-GiST 支援）<a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></td>
+<td>查詢只需索引內欄位時自動生效，<code>Extra</code> 顯示 Using index <a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes">S8</a><a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></td>
+<td>本次來源未提供</td>
+</tr>
+</tbody>
+</table>
+<h2>本條目的使用規則</h2>
+<ol>
+<li>表格中標為「本次來源未提供」者，<strong>不得在簡報中補上任何內容</strong>，即使模型認為自己知道。</li>
+<li>任何跨引擎的概括性陳述（「所有資料庫都…」）必須退回為「PostgreSQL 18 的文件說…」。</li>
+<li>在 sqlite3 上實跑驗證的結果，<strong>只能證明 SQLite 的行為</strong>，不可當作 PostgreSQL 或 MySQL 的證據。</li>
+</ol></article><article id="D2"><h2>D2 — 三引擎執行計畫輸出格式對照<span class="badge">18 處引註</span></h2><p><strong>來源</strong>：S2, S4, S10, S11
+<strong>⚠ 版本相依條目：引用時必須標明引擎。</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>PostgreSQL 18</th>
+<th>MySQL 8.0</th>
+<th>SQLite</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>指令</td>
+<td><code>EXPLAIN</code> / <code>EXPLAIN ANALYZE</code> <a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></td>
+<td><code>EXPLAIN</code> / <code>EXPLAIN FORMAT=JSON</code> <a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></td>
+<td><code>EXPLAIN QUERY PLAN</code> <a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></td>
+</tr>
+<tr>
+<td>輸出形式</td>
+<td>計畫節點樹，一節點一行，縮排表示層次 <a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></td>
+<td>表格，一列一張表 <a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></td>
+<td>高階概觀 <a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></td>
+</tr>
+<tr>
+<td>是否實際執行</td>
+<td><code>EXPLAIN</code> 不執行；<code>EXPLAIN ANALYZE</code> 執行 <a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></td>
+<td><code>EXPLAIN</code> 不執行 <a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></td>
+<td>不執行 <a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></td>
+</tr>
+<tr>
+<td>成本表示</td>
+<td><code>cost=startup..total rows=N width=W</code>，任意單位 <a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></td>
+<td>無成本欄位；以 <code>rows</code>、<code>filtered</code> 表示估計 <a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></td>
+<td>本次來源未提供</td>
+</tr>
+<tr>
+<td>「沒用索引」的訊號</td>
+<td><code>Seq Scan</code> 節點 <a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></td>
+<td><code>type: ALL</code>，<code>key: NULL</code> <a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></td>
+<td>輸出中顯示全表掃描 <a class="cite" href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener" title="SQLite — The SQLite Query Optimizer Overview">S11</a></td>
+</tr>
+<tr>
+<td>「用了覆蓋索引」的訊號</td>
+<td><code>Index Only Scan</code> 節點 <a class="cite" href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes">S4</a></td>
+<td><code>Extra: Using index</code> <a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></td>
+<td>本次來源未提供</td>
+</tr>
+<tr>
+<td>實際 vs 估計</td>
+<td><code>EXPLAIN ANALYZE</code> 同時顯示兩者 <a class="cite" href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener" title="PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN">S2</a></td>
+<td>僅估計；需自行比對真實列數 <a class="cite" href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener" title="MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format">S10</a></td>
+<td>本次來源未提供</td>
+</tr>
+</tbody>
+</table>
+<h2>教學用途</h2>
+<p>此條目用於支撐簡報中「如何自己看出查詢有沒有用到索引」那一頁。
+<strong>該頁必須只示範一個引擎</strong>（選 SQLite，因為可實跑驗證），並明確標示其他引擎的指令不同。</p></article>
+<article id="sources"><h2>來源索引（17 篇）</h2>
+<table id="src"><tr><th>編號</th><th>來源</th><th>連結</th></tr><tr><td>S1</td><td>PostgreSQL 18 官方文件 — 11.2 Index Types</td><td><a href="https://www.postgresql.org/docs/18/indexes-types.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S2</td><td>PostgreSQL 18 官方文件 — 14.1 Using EXPLAIN</td><td><a href="https://www.postgresql.org/docs/18/using-explain.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S3</td><td>PostgreSQL 18 官方文件 — 11.3 Multicolumn Indexes</td><td><a href="https://www.postgresql.org/docs/18/indexes-multicolumn.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S4</td><td>PostgreSQL 18 官方文件 — 11.9 Index-Only Scans and Covering Indexes</td><td><a href="https://www.postgresql.org/docs/18/indexes-index-only-scans.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S5</td><td>PostgreSQL 18 官方文件 — 9.2 Comparison Functions and Operators</td><td><a href="https://www.postgresql.org/docs/18/functions-comparison.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S6</td><td>PostgreSQL 18 官方文件 — 7.2 Table Expressions</td><td><a href="https://www.postgresql.org/docs/18/queries-table-expressions.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S7</td><td>PostgreSQL 18 官方文件 — SELECT 指令參考</td><td><a href="https://www.postgresql.org/docs/18/sql-select.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S8</td><td>MySQL 8.0 Reference Manual — 10.3.1 How MySQL Uses Indexes</td><td><a href="https://dev.mysql.com/doc/refman/8.0/en/mysql-indexes.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S9</td><td>MySQL 8.0 Reference Manual — 10.3 Optimization and Indexes</td><td><a href="https://docs.oracle.com/cd/E17952_01/mysql-8.0-en/optimization-indexes.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S10</td><td>MySQL 8.0 Reference Manual — 10.8.2 EXPLAIN Output Format</td><td><a href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S11</td><td>SQLite — The SQLite Query Optimizer Overview</td><td><a href="https://www.sqlite.org/optoverview.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S12</td><td>Use The Index, Luke — The B-Tree</td><td><a href="https://use-the-index-luke.com/sql/anatomy/the-tree" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S13</td><td>Use The Index, Luke — Concatenated Keys</td><td><a href="https://use-the-index-luke.com/sql/where-clause/the-equals-operator/concatenated-keys" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S14</td><td>Use The Index, Luke — Functions (index 失效)</td><td><a href="https://use-the-index-luke.com/sql/where-clause/functions" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S15</td><td>PostgreSQL 18 官方文件 — 9.21 Aggregate Functions</td><td><a href="https://www.postgresql.org/docs/18/functions-aggregate.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S16</td><td>PostgreSQL 18 官方文件 — 52.5 Planner/Optimizer</td><td><a href="https://www.postgresql.org/docs/18/planner-optimizer.html" target="_blank" rel="noopener">開啟</a></td></tr><tr><td>S17</td><td>PostgreSQL 18 官方文件 — 65.6 Database Page Layout</td><td><a href="https://www.postgresql.org/docs/18/storage-page-layout.html" target="_blank" rel="noopener">開啟</a></td></tr></table></article>
+</main>
+<script>
+var links=[].slice.call(document.querySelectorAll('nav a'));
+var obs=new IntersectionObserver(function(es){
+  es.forEach(function(e){ if(e.isIntersecting){
+    links.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id)});
+  }});
+},{rootMargin:'-10% 0px -80% 0px'});
+document.querySelectorAll('article').forEach(function(a){obs.observe(a)});
+</script></body></html>
